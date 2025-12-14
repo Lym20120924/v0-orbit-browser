@@ -1,11 +1,8 @@
 "use client"
 
-import type React, { FormEvent } from "react"
+import type React from "react"
 
-import { useEffect } from "react"
-
-import { useState } from "react"
-
+import { useState, useEffect, type FormEvent } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,11 +21,11 @@ import {
   FileText,
   User,
   LogOut,
-  Code,
+  Code2,
   Key,
-  Camera,
   BookOpen,
-  ShieldAlert,
+  EyeOff,
+  Maximize,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useBrowser } from "../orbit-browser"
@@ -54,16 +51,19 @@ interface BrowserToolbarProps {
   onOpenFileViewer: () => void
   onOpenDevTools: () => void
   onOpenPasswordManager: () => void
-  onOpenScreenshotTool: () => void
-  onToggleReaderMode: () => void
-  onTogglePrivacyMode: () => void
+  onToggleReadingMode: () => void
+  onToggleIncognito: () => void
+  onToggleFullscreen: () => void
   isBookmarked: boolean
   canGoBack: boolean
   canGoForward: boolean
   splitView: boolean
   downloadsCount: number
   deviceEmulationEnabled: boolean
-  privacyMode: boolean
+  incognitoMode: boolean
+  devToolsOpen: boolean
+  readingModeOpen: boolean
+  fullscreen: boolean
   user: UserType | null
 }
 
@@ -170,22 +170,26 @@ export function BrowserToolbar({
   onOpenFileViewer,
   onOpenDevTools,
   onOpenPasswordManager,
-  onOpenScreenshotTool,
-  onToggleReaderMode,
-  onTogglePrivacyMode,
+  onToggleReadingMode,
+  onToggleIncognito,
+  onToggleFullscreen,
   isBookmarked,
   canGoBack,
   canGoForward,
   splitView,
   downloadsCount,
   deviceEmulationEnabled,
-  privacyMode,
+  incognitoMode,
+  devToolsOpen,
+  readingModeOpen,
+  fullscreen,
   user,
 }: BrowserToolbarProps) {
   const { translate } = useBrowser()
   const [inputValue, setInputValue] = useState(url)
   const [isFocused, setIsFocused] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showToolsMenu, setShowToolsMenu] = useState(false)
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false)
 
   useEffect(() => {
@@ -296,6 +300,15 @@ export function BrowserToolbar({
           <Star className={cn("h-4 w-4 transition-all duration-200", isBookmarked && "fill-primary scale-110")} />
         </button>
 
+        <AnimatedIconButton
+          onClick={onToggleReadingMode}
+          active={readingModeOpen}
+          title={translate("readingMode")}
+          soundEffect="toggle"
+        >
+          <BookOpen className="h-4 w-4" />
+        </AnimatedIconButton>
+
         <AnimatedIconButton onClick={onOpenTranslate} title={translate("translate")} soundEffect="pop">
           <Languages className="h-4 w-4" />
         </AnimatedIconButton>
@@ -303,6 +316,82 @@ export function BrowserToolbar({
         <AnimatedIconButton onClick={onOpenFileViewer} title={translate("fileViewer")} soundEffect="pop">
           <FileText className="h-4 w-4" />
         </AnimatedIconButton>
+
+        <div className="relative">
+          <AnimatedIconButton
+            onClick={() => {
+              playSound("click")
+              setShowToolsMenu(!showToolsMenu)
+            }}
+            title={translate("moreTools")}
+            soundEffect="pop"
+          >
+            <Code2 className="h-4 w-4" />
+          </AnimatedIconButton>
+
+          {showToolsMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowToolsMenu(false)} />
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-panel-appear">
+                <button
+                  onClick={() => {
+                    playSound("click")
+                    onOpenDevTools()
+                    setShowToolsMenu(false)
+                  }}
+                  onMouseEnter={() => playSound("hover")}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 hover:bg-secondary hover:scale-[1.02]",
+                    devToolsOpen ? "text-primary bg-primary/10" : "text-foreground",
+                  )}
+                >
+                  <Code2 className="h-4 w-4" />
+                  {translate("developerTools")}
+                </button>
+                <button
+                  onClick={() => {
+                    playSound("click")
+                    onOpenPasswordManager()
+                    setShowToolsMenu(false)
+                  }}
+                  onMouseEnter={() => playSound("hover")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                >
+                  <Key className="h-4 w-4" />
+                  {translate("passwordManager")}
+                </button>
+                <button
+                  onClick={() => {
+                    playSound("click")
+                    onToggleIncognito()
+                    setShowToolsMenu(false)
+                  }}
+                  onMouseEnter={() => playSound("hover")}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 hover:bg-secondary hover:scale-[1.02]",
+                    incognitoMode ? "text-primary bg-primary/10" : "text-foreground",
+                  )}
+                >
+                  <EyeOff className="h-4 w-4" />
+                  {translate("incognitoMode")}
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button
+                  onClick={() => {
+                    playSound("click")
+                    onToggleFullscreen()
+                    setShowToolsMenu(false)
+                  }}
+                  onMouseEnter={() => playSound("hover")}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                >
+                  <Maximize className="h-4 w-4" />
+                  {translate("fullscreen")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         <AnimatedIconButton
           onClick={onToggleDeviceEmulation}
@@ -361,53 +450,31 @@ export function BrowserToolbar({
           </button>
 
           {showUserMenu && user && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-border bg-card p-2 shadow-xl animate-panel-appear">
-              <div className="mb-2 border-b border-border pb-2">
-                <p className="px-2 text-sm font-medium text-foreground">{user.username}</p>
-                <p className="px-2 text-xs text-muted-foreground">{user.email}</p>
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+              <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-border bg-card p-2 shadow-xl animate-panel-appear">
+                <div className="mb-2 border-b border-border pb-2">
+                  <p className="px-2 text-sm font-medium text-foreground">{user.username}</p>
+                  <p className="px-2 text-xs text-muted-foreground">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    playSound("click")
+                    setShowUserMenu(false)
+                  }}
+                  onMouseEnter={() => playSound("hover")}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-all duration-200 hover:scale-[1.02]"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {translate("logout")}
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  playSound("click")
-                  setShowUserMenu(false)
-                }}
-                onMouseEnter={() => playSound("hover")}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-all duration-200 hover:scale-[1.02]"
-              >
-                <LogOut className="h-4 w-4" />
-                {translate("logout")}
-              </button>
-            </div>
+            </>
           )}
         </div>
 
         <AnimatedIconButton onClick={onToggleSidebar} title="Toggle sidebar" soundEffect="whoosh">
           <Menu className="h-4 w-4" />
-        </AnimatedIconButton>
-
-        <AnimatedIconButton
-          onClick={onTogglePrivacyMode}
-          active={privacyMode}
-          title={translate("privacyMode")}
-          soundEffect="toggle"
-        >
-          <ShieldAlert className="h-4 w-4" />
-        </AnimatedIconButton>
-
-        <AnimatedIconButton onClick={onOpenDevTools} title={translate("devTools")} soundEffect="pop">
-          <Code className="h-4 w-4" />
-        </AnimatedIconButton>
-
-        <AnimatedIconButton onClick={onOpenPasswordManager} title={translate("passwordManager")} soundEffect="pop">
-          <Key className="h-4 w-4" />
-        </AnimatedIconButton>
-
-        <AnimatedIconButton onClick={onOpenScreenshotTool} title={translate("screenshot")} soundEffect="pop">
-          <Camera className="h-4 w-4" />
-        </AnimatedIconButton>
-
-        <AnimatedIconButton onClick={onToggleReaderMode} title={translate("readerMode")} soundEffect="pop">
-          <BookOpen className="h-4 w-4" />
         </AnimatedIconButton>
       </div>
     </div>
