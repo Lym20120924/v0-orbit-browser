@@ -13,13 +13,15 @@ import {
   Film,
   AlertTriangle,
   ShieldCheck,
-  Wifi,
+  RefreshCw,
+  Loader2,
 } from "lucide-react"
 import type { Bookmark, Download as DownloadType } from "../orbit-browser"
 import { useBrowser } from "../orbit-browser"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
-import { mightBlockIframe, getProxyUrl } from "@/lib/proxy"
+import { mightBlockIframe, getProxyUrl, getProxyName, getTotalProxies } from "@/lib/proxy"
+import { playSound } from "@/lib/sounds"
 
 interface BrowserContentProps {
   url: string
@@ -45,12 +47,16 @@ export function BrowserContent({
   const [useProxy, setUseProxy] = useState(false)
   const [proxyIndex, setProxyIndex] = useState(0)
   const [loadAttempts, setLoadAttempts] = useState(0)
+  const [autoRetrying, setAutoRetrying] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     setIframeError(false)
     setUseProxy(false)
     setProxyIndex(0)
     setLoadAttempts(0)
+    setAutoRetrying(false)
+    setRetryCount(0)
   }, [url])
 
   useEffect(() => {
@@ -58,6 +64,25 @@ export function BrowserContent({
       setUseProxy(true)
     }
   }, [url, settings.browsingMode])
+
+  useEffect(() => {
+    if (iframeError && !autoRetrying && retryCount < getTotalProxies()) {
+      console.log(`[v0] Iframe load failed, auto-retrying with proxy ${retryCount + 1}/${getTotalProxies()}`)
+      setAutoRetrying(true)
+      playSound("error")
+
+      // 等待2秒后尝试下一个代理
+      setTimeout(() => {
+        setProxyIndex((prev) => prev + 1)
+        setUseProxy(true)
+        setIframeError(false)
+        setLoadAttempts((prev) => prev + 1)
+        setRetryCount((prev) => prev + 1)
+        setAutoRetrying(false)
+        playSound("refresh")
+      }, 2000)
+    }
+  }, [iframeError, autoRetrying, retryCount])
 
   if (isLoading) {
     return (
@@ -114,6 +139,7 @@ export function BrowserContent({
 
   if (isExternalUrl && (settings.browsingMode === "live" || settings.browsingMode === "proxy")) {
     const displayUrl = useProxy ? getProxyUrl(url, proxyIndex) : url
+    const currentProxyName = getProxyName(proxyIndex)
 
     return (
       <div className={cn("flex flex-1 flex-col bg-background", className)}>
@@ -121,21 +147,42 @@ export function BrowserContent({
           <div className="flex items-center justify-between bg-primary/10 px-4 py-2 animate-slide-in-up">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary animate-pulse" />
-              <span className="text-xs font-medium text-primary">{translate("proxyEnabled")}</span>
+              <span className="text-xs font-medium text-primary">
+                {translate("proxyEnabled")} - {currentProxyName} ({proxyIndex + 1}/{getTotalProxies()})
+              </span>
             </div>
-            <button
-              onClick={() => {
-                setUseProxy(false)
-                setIframeError(false)
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
-            >
-              {translate("proxyDisabled")}
-            </button>
+            <div className="flex items-center gap-2">
+              {retryCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {translate("retried")} {retryCount} {translate("times")}
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  playSound("click")
+                  setUseProxy(false)
+                  setIframeError(false)
+                  setProxyIndex(0)
+                  setRetryCount(0)
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
+                {translate("disable")}
+              </button>
+            </div>
           </div>
         )}
 
-        {iframeError ? (
+        {autoRetrying && (
+          <div className="flex items-center justify-center gap-2 bg-accent/10 px-4 py-2 animate-slide-in-up">
+            <Loader2 className="h-4 w-4 text-accent animate-spin" />
+            <span className="text-xs font-medium text-accent">
+              {translate("autoRetrying")} ({retryCount + 1}/{getTotalProxies()})...
+            </span>
+          </div>
+        )}
+
+        {iframeError && retryCount >= getTotalProxies() - 1 ? (
           <div className="flex flex-1 flex-col items-center justify-center p-8 animate-fade-in">
             <div className="w-full max-w-md text-center">
               <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-destructive/10 animate-bounce-in">
@@ -147,31 +194,38 @@ export function BrowserContent({
               >
                 {translate("cannotLoadInFrame")}
               </h2>
-              <p className="mb-6 text-sm text-muted-foreground animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+              <p className="mb-2 text-sm text-muted-foreground animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
                 {translate("siteBlockedIframe")}
+              </p>
+              <p className="mb-6 text-xs text-muted-foreground animate-fade-in-up" style={{ animationDelay: "0.25s" }}>
+                {translate("triedAllProxies")} ({getTotalProxies()})
               </p>
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => {
+                    playSound("refresh")
+                    setProxyIndex(0)
                     setUseProxy(true)
                     setIframeError(false)
                     setLoadAttempts((prev) => prev + 1)
+                    setRetryCount(0)
                   }}
                   className={cn(
-                    "flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3",
-                    "text-sm font-medium text-primary-foreground",
-                    "transition-all duration-200 hover:bg-primary/90 hover:scale-105 active:scale-95",
+                    "flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3",
+                    "text-sm font-medium text-accent-foreground",
+                    "transition-all duration-200 hover:bg-accent/90 hover:scale-105 active:scale-95",
                     "animate-fade-in-up",
                   )}
                   style={{ animationDelay: "0.3s" }}
                 >
-                  <Wifi className="h-4 w-4" />
-                  {translate("tryProxy")}
+                  <RefreshCw className="h-4 w-4" />
+                  {translate("retryFromStart")}
                 </button>
                 <a
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => playSound("whoosh")}
                   className={cn(
                     "flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-6 py-3",
                     "text-sm font-medium text-foreground",
@@ -188,13 +242,22 @@ export function BrowserContent({
           </div>
         ) : (
           <iframe
-            key={`${url}-${loadAttempts}-${useProxy}`}
+            key={`${url}-${loadAttempts}-${useProxy}-${proxyIndex}`}
             src={displayUrl}
             className="h-full w-full border-0 animate-fade-in"
             sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-downloads"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             referrerPolicy="no-referrer-when-downgrade"
-            onError={() => setIframeError(true)}
+            onError={() => {
+              console.log(`[v0] Iframe error for URL: ${displayUrl}, proxy index: ${proxyIndex}`)
+              setIframeError(true)
+            }}
+            onLoad={() => {
+              console.log(`[v0] Iframe loaded successfully: ${displayUrl}`)
+              if (useProxy) {
+                playSound("success")
+              }
+            }}
           />
         )}
       </div>
@@ -433,7 +496,7 @@ function NewTabPage({
                     "flex items-center justify-center rounded-xl bg-gradient-to-br shadow-lg",
                     "transition-all duration-200 group-hover:scale-110 group-hover:shadow-xl group-hover:rotate-3",
                     link.color,
-                    isMobile ? "h-10 w-10" : "h-14 w-14",
+                    isMobile ? "h-10 w-10 text-xs" : "h-14 w-14 text-sm",
                   )}
                 >
                   <link.icon className={cn("text-white", isMobile ? "h-5 w-5" : "h-7 w-7")} />
@@ -493,9 +556,9 @@ function NewTabPage({
           style={{ animationDelay: "0.7s" }}
         >
           {[
-            { icon: Shield, label: "secure", color: "bg-accent/20 text-accent" },
-            { icon: Zap, label: "fast", color: "bg-primary/20 text-primary" },
-            { icon: Rocket, label: "modern", color: "bg-primary/20 text-primary" },
+            { icon: Shield, label: "secure", color: "bg-muted/50 text-muted-foreground border border-border" },
+            { icon: Zap, label: "fast", color: "bg-primary/80 text-primary-foreground" },
+            { icon: Rocket, label: "modern", color: "bg-accent/80 text-accent-foreground" },
           ].map((feature, index) => (
             <div
               key={feature.label}
@@ -507,10 +570,10 @@ function NewTabPage({
                   "flex items-center justify-center rounded-full transition-all duration-200",
                   "group-hover:scale-110 group-hover:shadow-lg",
                   feature.color,
-                  isMobile ? "h-8 w-8" : "h-10 w-10",
+                  isMobile ? "h-12 w-12" : "h-16 w-16",
                 )}
               >
-                <feature.icon className={cn(isMobile ? "h-4 w-4" : "h-5 w-5")} />
+                <feature.icon className={cn(isMobile ? "h-5 w-5" : "h-7 w-7")} />
               </div>
               <span className="text-xs text-muted-foreground">{translate(feature.label)}</span>
             </div>

@@ -3,14 +3,16 @@
 import { useState, useCallback, createContext, useContext } from "react"
 import { BrowserToolbar } from "./browser/browser-toolbar"
 import { TabBar } from "./browser/tab-bar"
-import { BrowserContent } from "./browser/browser-content"
-import { Sidebar } from "./browser/sidebar"
 import { SettingsPanel } from "./browser/settings-panel"
 import { DownloadsPanel } from "./browser/downloads-panel"
-import { DeviceEmulator } from "./browser/device-emulator"
 import { AuthPanel } from "./browser/auth-panel"
 import { TranslatePanel } from "./browser/translate-panel"
 import { FileViewer } from "./browser/file-viewer"
+import { DevTools } from "./browser/dev-tools"
+import { PasswordManager } from "./browser/password-manager"
+import { ScreenshotTool } from "./browser/screenshot-tool"
+import { ReaderMode } from "./browser/reader-mode"
+import { Shield } from "@/components/icons" // Import the Shield component
 import { type Language, t } from "@/lib/i18n"
 import type { DevicePreset } from "@/lib/devices"
 import type { User } from "@/lib/auth"
@@ -357,9 +359,22 @@ export function OrbitBrowser() {
   const canGoBack = activeTab.historyIndex > 0
   const canGoForward = activeTab.historyIndex < activeTab.historyStack.length - 1
 
+  const [devToolsOpen, setDevToolsOpen] = useState(false)
+  const [passwordManagerOpen, setPasswordManagerOpen] = useState(false)
+  const [screenshotToolOpen, setScreenshotToolOpen] = useState(false)
+  const [readerModeOpen, setReaderModeOpen] = useState(false)
+  const [privacyMode, setPrivacyMode] = useState(false)
+
   return (
     <BrowserContext.Provider value={{ settings, updateSettings, downloads, addDownload, translate, user }}>
       <div className="flex h-full w-full flex-col bg-background">
+        {privacyMode && (
+          <div className="flex h-8 items-center justify-center gap-2 bg-purple-500/20 text-xs font-medium text-purple-300">
+            <Shield className="h-3 w-3" />
+            {translate("privacyMode")} - {translate("noHistory")}
+          </div>
+        )}
+
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}
@@ -385,6 +400,11 @@ export function OrbitBrowser() {
           onOpenAuth={() => setAuthOpen(true)}
           onOpenTranslate={() => setTranslateOpen(true)}
           onOpenFileViewer={() => setFileViewerOpen(true)}
+          onOpenDevTools={() => setDevToolsOpen(true)}
+          onOpenPasswordManager={() => setPasswordManagerOpen(true)}
+          onOpenScreenshotTool={() => setScreenshotToolOpen(true)}
+          onToggleReaderMode={() => setReaderModeOpen(true)}
+          onTogglePrivacyMode={() => setPrivacyMode((prev) => !prev)}
           isBookmarked={isBookmarked}
           canGoBack={canGoBack}
           canGoForward={canGoForward}
@@ -392,102 +412,23 @@ export function OrbitBrowser() {
           downloadsCount={downloads.filter((d) => d.status === "downloading").length}
           deviceEmulationEnabled={deviceEmulationEnabled}
           user={user}
+          privacyMode={privacyMode}
         />
-
-        {settings.showBookmarksBar && (
-          <div className="flex h-8 items-center gap-1 border-b border-border bg-secondary/50 px-2">
-            {bookmarks.slice(0, 8).map((bookmark) => (
-              <button
-                key={bookmark.id}
-                onClick={() => navigateToUrl(bookmark.url)}
-                className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                <span className="flex h-4 w-4 items-center justify-center rounded bg-primary/20 text-[8px] font-bold text-primary">
-                  {bookmark.title.charAt(0).toUpperCase()}
-                </span>
-                <span className="max-w-[80px] truncate">{bookmark.title}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {deviceEmulationEnabled && (
-          <DeviceEmulator
-            currentDevice={currentDevice}
-            isRotated={isRotated}
-            onDeviceChange={setCurrentDevice}
-            onRotate={() => setIsRotated((prev) => !prev)}
-            onClose={() => setDeviceEmulationEnabled(false)}
-          />
-        )}
-
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            isOpen={sidebarOpen}
-            bookmarks={bookmarks}
-            history={history}
-            onNavigate={navigateToUrl}
-            onRemoveBookmark={removeBookmark}
-            onClearHistory={() => setHistory([])}
-          />
-
-          <div className="flex flex-1 items-center justify-center overflow-hidden bg-muted/30">
-            <div
-              className="flex overflow-hidden transition-all duration-300"
-              style={{
-                width:
-                  deviceEmulationEnabled && currentDevice && currentDevice.width > 0
-                    ? isRotated
-                      ? currentDevice.height
-                      : currentDevice.width
-                    : "100%",
-                height:
-                  deviceEmulationEnabled && currentDevice && currentDevice.height > 0
-                    ? isRotated
-                      ? currentDevice.width
-                      : currentDevice.height
-                    : "100%",
-                maxWidth: "100%",
-                maxHeight: "100%",
-              }}
-            >
-              <div
-                className={`flex flex-1 overflow-hidden ${
-                  deviceEmulationEnabled && currentDevice && currentDevice.width > 0
-                    ? "rounded-3xl border-4 border-foreground/20 shadow-2xl"
-                    : ""
-                }`}
-              >
-                <BrowserContent
-                  url={activeTab.url}
-                  isLoading={activeTab.isLoading}
-                  bookmarks={bookmarks}
-                  onNavigate={navigateToUrl}
-                  onDownload={addDownload}
-                  className={splitView ? "w-1/2 border-r border-border" : "flex-1"}
-                  deviceType={currentDevice?.type}
-                />
-                {splitView && splitTab && (
-                  <BrowserContent
-                    url={splitTab.url}
-                    isLoading={splitTab.isLoading}
-                    bookmarks={bookmarks}
-                    onNavigate={(url) => navigateToUrl(url, splitTab.id)}
-                    onDownload={addDownload}
-                    className="w-1/2"
-                    deviceType={currentDevice?.type}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
 
         <SettingsPanel isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
         <DownloadsPanel isOpen={downloadsOpen} onClose={() => setDownloadsOpen(false)} />
         <AuthPanel isOpen={authOpen} onClose={() => setAuthOpen(false)} onLogin={setUser} />
         <TranslatePanel isOpen={translateOpen} onClose={() => setTranslateOpen(false)} currentUrl={activeTab.url} />
         <FileViewer isOpen={fileViewerOpen} onClose={() => setFileViewerOpen(false)} />
+
+        <DevTools isOpen={devToolsOpen} onClose={() => setDevToolsOpen(false)} currentUrl={activeTab.url} />
+        <PasswordManager isOpen={passwordManagerOpen} onClose={() => setPasswordManagerOpen(false)} />
+        <ScreenshotTool
+          isOpen={screenshotToolOpen}
+          onClose={() => setScreenshotToolOpen(false)}
+          currentUrl={activeTab.url}
+        />
+        <ReaderMode isOpen={readerModeOpen} onClose={() => setReaderModeOpen(false)} content="" />
       </div>
     </BrowserContext.Provider>
   )

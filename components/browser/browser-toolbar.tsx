@@ -1,8 +1,11 @@
 "use client"
 
-import type React from "react"
+import type React, { FormEvent } from "react"
 
-import { useState, useEffect, type FormEvent } from "react"
+import { useEffect } from "react"
+
+import { useState } from "react"
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,6 +24,11 @@ import {
   FileText,
   User,
   LogOut,
+  Code,
+  Key,
+  Camera,
+  BookOpen,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useBrowser } from "../orbit-browser"
@@ -44,12 +52,18 @@ interface BrowserToolbarProps {
   onOpenAuth: () => void
   onOpenTranslate: () => void
   onOpenFileViewer: () => void
+  onOpenDevTools: () => void
+  onOpenPasswordManager: () => void
+  onOpenScreenshotTool: () => void
+  onToggleReaderMode: () => void
+  onTogglePrivacyMode: () => void
   isBookmarked: boolean
   canGoBack: boolean
   canGoForward: boolean
   splitView: boolean
   downloadsCount: number
   deviceEmulationEnabled: boolean
+  privacyMode: boolean
   user: UserType | null
 }
 
@@ -154,12 +168,18 @@ export function BrowserToolbar({
   onOpenAuth,
   onOpenTranslate,
   onOpenFileViewer,
+  onOpenDevTools,
+  onOpenPasswordManager,
+  onOpenScreenshotTool,
+  onToggleReaderMode,
+  onTogglePrivacyMode,
   isBookmarked,
   canGoBack,
   canGoForward,
   splitView,
   downloadsCount,
   deviceEmulationEnabled,
+  privacyMode,
   user,
 }: BrowserToolbarProps) {
   const { translate } = useBrowser()
@@ -363,6 +383,31 @@ export function BrowserToolbar({
 
         <AnimatedIconButton onClick={onToggleSidebar} title="Toggle sidebar" soundEffect="whoosh">
           <Menu className="h-4 w-4" />
+        </AnimatedIconButton>
+
+        <AnimatedIconButton
+          onClick={onTogglePrivacyMode}
+          active={privacyMode}
+          title={translate("privacyMode")}
+          soundEffect="toggle"
+        >
+          <ShieldAlert className="h-4 w-4" />
+        </AnimatedIconButton>
+
+        <AnimatedIconButton onClick={onOpenDevTools} title={translate("devTools")} soundEffect="pop">
+          <Code className="h-4 w-4" />
+        </AnimatedIconButton>
+
+        <AnimatedIconButton onClick={onOpenPasswordManager} title={translate("passwordManager")} soundEffect="pop">
+          <Key className="h-4 w-4" />
+        </AnimatedIconButton>
+
+        <AnimatedIconButton onClick={onOpenScreenshotTool} title={translate("screenshot")} soundEffect="pop">
+          <Camera className="h-4 w-4" />
+        </AnimatedIconButton>
+
+        <AnimatedIconButton onClick={onToggleReaderMode} title={translate("readerMode")} soundEffect="pop">
+          <BookOpen className="h-4 w-4" />
         </AnimatedIconButton>
       </div>
     </div>

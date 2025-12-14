@@ -66,7 +66,11 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 top: "50%",
                 transform: "translate(-50%, -50%)",
                 borderColor: `rgba(var(--primary), ${0.05 + i * 0.05})`,
-                animation: `orbit-spin ${30 - i * 5}s linear infinite ${i % 2 === 0 ? "" : "reverse"}`,
+                animationName: "orbit-spin",
+                animationDuration: `${30 - i * 5}s`,
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
+                animationDirection: i % 2 === 0 ? "normal" : "reverse",
               }}
             />
           ))}
@@ -83,7 +87,10 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
               top: `${Math.random() * 100}%`,
               background: i % 3 === 0 ? "var(--primary)" : i % 3 === 1 ? "var(--accent)" : "white",
               opacity: 0.4,
-              animation: `${i % 2 === 0 ? "float" : "particle-float"} ${2 + Math.random() * 3}s ease-in-out infinite`,
+              animationName: i % 2 === 0 ? "float" : "particle-float",
+              animationDuration: `${2 + Math.random() * 3}s`,
+              animationTimingFunction: "ease-in-out",
+              animationIterationCount: "infinite",
               animationDelay: `${Math.random() * 2}s`,
             }}
           />
@@ -98,9 +105,12 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 50}%`,
               transform: "rotate(-45deg)",
-              animation: `shimmer ${1 + Math.random()}s ease-out infinite`,
-              animationDelay: `${i * 1.5}s`,
               opacity: 0.4,
+              animationName: "shimmer",
+              animationDuration: `${1 + Math.random()}s`,
+              animationTimingFunction: "ease-out",
+              animationIterationCount: "infinite",
+              animationDelay: `${i * 1.5}s`,
             }}
           />
         ))}
@@ -121,7 +131,15 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             <div className="absolute inset-4 rounded-full bg-gradient-to-bl from-transparent to-black/20" />
 
             {/* Main orbiting satellite */}
-            <div className="absolute w-full h-full" style={{ animation: "orbit-spin 3s linear infinite" }}>
+            <div
+              className="absolute w-full h-full"
+              style={{
+                animationName: "orbit-spin",
+                animationDuration: "3s",
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
+              }}
+            >
               <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-accent shadow-lg shadow-accent/50">
                 <div className="absolute inset-0.5 rounded-full bg-gradient-to-br from-white/50 to-transparent" />
                 {/* Satellite trail */}
@@ -130,14 +148,31 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             </div>
 
             {/* Second orbit */}
-            <div className="absolute w-[150%] h-[150%]" style={{ animation: "orbit-spin 5s linear infinite reverse" }}>
+            <div
+              className="absolute w-[150%] h-[150%]"
+              style={{
+                animationName: "orbit-spin",
+                animationDuration: "5s",
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
+                animationDirection: "reverse",
+              }}
+            >
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary/60 shadow-lg">
                 <div className="absolute inset-0.5 rounded-full bg-gradient-to-br from-white/30 to-transparent" />
               </div>
             </div>
 
             {/* Third orbit */}
-            <div className="absolute w-[180%] h-[180%]" style={{ animation: "orbit-spin 7s linear infinite" }}>
+            <div
+              className="absolute w-[180%] h-[180%]"
+              style={{
+                animationName: "orbit-spin",
+                animationDuration: "7s",
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
+              }}
+            >
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/40" />
             </div>
 
@@ -172,7 +207,10 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
                 width: `${progress}%`,
                 background: "linear-gradient(90deg, var(--primary), var(--accent), var(--primary))",
                 backgroundSize: "200% 100%",
-                animation: "shimmer 1.5s linear infinite",
+                animationName: "shimmer",
+                animationDuration: "1.5s",
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
               }}
             >
               {/* Shine effect */}
