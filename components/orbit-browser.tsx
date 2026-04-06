@@ -18,6 +18,22 @@ import { IncognitoIndicator } from "./browser/incognito-indicator"
 import { type Language, t } from "@/lib/i18n"
 import type { DevicePreset } from "@/lib/devices"
 import type { User } from "@/lib/auth"
+import { useGestureControls } from "@/lib/gesture-controls"
+import { WorkspaceManagerPanel } from "./browser/workspace-manager-panel"
+import { PageAnalyzerPanel } from "./browser/page-analyzer-panel"
+import { SmartBookmarksPanel } from "./browser/smart-bookmarks-panel"
+import { QRGeneratorPanel } from "./browser/qr-generator-panel"
+import { PageAnnotationsPanel } from "./browser/page-annotations-panel"
+import { RSSReaderPanel } from "./browser/rss-reader-panel"
+import { ExtensionsPanel } from "./browser/extensions-panel"
+import { AdBlockerPanel } from "./browser/ad-blocker-panel"
+import { PerformanceMonitorPanel } from "./browser/performance-monitor-panel"
+import { ScreenRecorderPanel } from "./browser/screen-recorder-panel"
+import { TabGroupsPanel } from "./browser/tab-groups-panel"
+import { SessionManagerPanel } from "./browser/session-manager-panel"
+import { AIAssistantPanel } from "./browser/ai-assistant-panel"
+import { CloudSyncPanel } from "./browser/cloud-sync-panel"
+import { APIHubPanel } from "./browser/api-hub-panel"
 
 export interface Tab {
   id: string
@@ -123,6 +139,24 @@ export function OrbitBrowser() {
   const [readingModeOpen, setReadingModeOpen] = useState(false)
   const [incognitoMode, setIncognitoMode] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+
+  const [extensionsOpen, setExtensionsOpen] = useState(false)
+  const [adBlockerOpen, setAdBlockerOpen] = useState(false)
+  const [performanceMonitorOpen, setPerformanceMonitorOpen] = useState(false)
+  const [screenRecorderOpen, setScreenRecorderOpen] = useState(false)
+
+  const [tabGroupsOpen, setTabGroupsOpen] = useState(false)
+  const [sessionManagerOpen, setSessionManagerOpen] = useState(false)
+  const [aiAssistantOpen, setAIAssistantOpen] = useState(false)
+  const [cloudSyncOpen, setCloudSyncOpen] = useState(false)
+
+  const [qrGeneratorOpen, setQRGeneratorOpen] = useState(false)
+  const [annotationsOpen, setAnnotationsOpen] = useState(false)
+  const [rssReaderOpen, setRSSReaderOpen] = useState(false)
+  const [workspaceManagerOpen, setWorkspaceManagerOpen] = useState(false)
+  const [pageAnalyzerOpen, setPageAnalyzerOpen] = useState(false)
+  const [smartBookmarksOpen, setSmartBookmarksOpen] = useState(false)
+  const [apiHubOpen, setAPIHubOpen] = useState(false)
 
   const translate = useCallback((key: string) => t(key, settings.language), [settings.language])
 
@@ -388,6 +422,12 @@ export function OrbitBrowser() {
   const canGoBack = activeTab.historyIndex > 0
   const canGoForward = activeTab.historyIndex < activeTab.historyStack.length - 1
 
+  const contentRef = useGestureControls({
+    onSwipeLeft: goForward,
+    onSwipeRight: goBack,
+    onSwipeDown: refresh,
+  })
+
   return (
     <BrowserContext.Provider value={{ settings, updateSettings, downloads, addDownload, translate, user }}>
       <div className="flex h-full w-full flex-col bg-background">
@@ -437,6 +477,21 @@ export function OrbitBrowser() {
           readingModeOpen={readingModeOpen}
           fullscreen={fullscreen}
           user={user}
+          onOpenExtensions={() => setExtensionsOpen(true)}
+          onOpenAdBlocker={() => setAdBlockerOpen(true)}
+          onOpenPerformanceMonitor={() => setPerformanceMonitorOpen(true)}
+          onOpenScreenRecorder={() => setScreenRecorderOpen(true)}
+          onOpenTabGroups={() => setTabGroupsOpen(true)}
+          onOpenSessionManager={() => setSessionManagerOpen(true)}
+          onOpenAIAssistant={() => setAIAssistantOpen(true)}
+          onOpenCloudSync={() => setCloudSyncOpen(true)}
+          onOpenQRGenerator={() => setQRGeneratorOpen(true)}
+          onOpenPageAnnotations={() => setAnnotationsOpen(true)}
+          onOpenRSSReader={() => setRSSReaderOpen(true)}
+          onOpenWorkspaceManager={() => setWorkspaceManagerOpen(true)}
+          onOpenPageAnalyzer={() => setPageAnalyzerOpen(true)}
+          onOpenSmartBookmarks={() => setSmartBookmarksOpen(true)}
+          onOpenAPIHub={() => setAPIHubOpen(true)}
         />
 
         {settings.showBookmarksBar && (
@@ -476,7 +531,7 @@ export function OrbitBrowser() {
             onClearHistory={() => setHistory([])}
           />
 
-          <div className="flex flex-1 items-center justify-center overflow-hidden bg-muted/30">
+          <div ref={contentRef} className="flex flex-1 items-center justify-center overflow-hidden bg-muted/30">
             <div
               className="flex overflow-hidden transition-all duration-300"
               style={{
@@ -538,6 +593,41 @@ export function OrbitBrowser() {
         {readingModeOpen && (
           <ReadingMode isOpen={readingModeOpen} onClose={() => setReadingModeOpen(false)} url={activeTab.url} />
         )}
+        <ExtensionsPanel isOpen={extensionsOpen} onClose={() => setExtensionsOpen(false)} />
+        <AdBlockerPanel isOpen={adBlockerOpen} onClose={() => setAdBlockerOpen(false)} />
+        <PerformanceMonitorPanel isOpen={performanceMonitorOpen} onClose={() => setPerformanceMonitorOpen(false)} />
+        <ScreenRecorderPanel isOpen={screenRecorderOpen} onClose={() => setScreenRecorderOpen(false)} />
+        <TabGroupsPanel
+          isOpen={tabGroupsOpen}
+          onClose={() => setTabGroupsOpen(false)}
+          tabs={tabs}
+          onUpdateTabs={setTabs}
+        />
+        <SessionManagerPanel
+          isOpen={sessionManagerOpen}
+          onClose={() => setSessionManagerOpen(false)}
+          tabs={tabs}
+          bookmarks={bookmarks}
+          onRestoreTabs={setTabs}
+        />
+        <AIAssistantPanel
+          isOpen={aiAssistantOpen}
+          onClose={() => setAIAssistantOpen(false)}
+          currentUrl={activeTab.url}
+          onNavigate={navigateToUrl}
+        />
+        <CloudSyncPanel isOpen={cloudSyncOpen} onClose={() => setCloudSyncOpen(false)} user={user} />
+        <QRGeneratorPanel isOpen={qrGeneratorOpen} onClose={() => setQRGeneratorOpen(false)} url={activeTab.url} />
+        <PageAnnotationsPanel isOpen={annotationsOpen} onClose={() => setAnnotationsOpen(false)} url={activeTab.url} />
+        <RSSReaderPanel isOpen={rssReaderOpen} onClose={() => setRSSReaderOpen(false)} onNavigate={navigateToUrl} />
+        <WorkspaceManagerPanel isOpen={workspaceManagerOpen} onClose={() => setWorkspaceManagerOpen(false)} />
+        <PageAnalyzerPanel
+          isOpen={pageAnalyzerOpen}
+          onClose={() => setPageAnalyzerOpen(false)}
+          currentUrl={activeTab.url}
+        />
+        <SmartBookmarksPanel isOpen={smartBookmarksOpen} onClose={() => setSmartBookmarksOpen(false)} />
+        <APIHubPanel isOpen={apiHubOpen} onClose={() => setAPIHubOpen(false)} />
       </div>
     </BrowserContext.Provider>
   )
