@@ -1,25 +1,26 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { X, Send, Bot, User, Sparkles, Trash2 } from "lucide-react"
-import { AIAssistant, type ChatMessage } from "@/lib/ai-assistant"
+import { X, Send, Bot, User, Sparkles, Trash2, ChevronDown, Loader2 } from "lucide-react"
 import { playSound } from "@/lib/sounds"
+import { sendAIMessage, getAvailableModels, type ChatMessage, type AIModel } from "@/lib/ai-api"
 
 interface AIAssistantPanelProps {
   isOpen: boolean
   onClose: () => void
-  currentUrl: string
-  onNavigate: (url: string) => void
+  currentUrl?: string
+  onNavigate?: (url: string) => void
 }
 
 export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AIAssistantPanelProps) {
-  const [aiAssistant] = useState(() => new AIAssistant())
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<AIModel>(getAvailableModels()[0])
+  const [showModelSelector, setShowModelSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,17 +30,39 @@ export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AI
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
 
-    const userMessage = input
+    const userMessage = input.trim()
     setInput("")
+    
+    // Add user message
+    const newUserMessage: ChatMessage = {
+      role: "user",
+      content: userMessage,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, newUserMessage])
     setIsLoading(true)
     playSound("click")
 
     try {
-      await aiAssistant.sendMessage(userMessage)
-      setMessages(aiAssistant.getMessages())
+      // Call real API
+      const response = await sendAIMessage(userMessage, selectedModel.id, messages)
+      
+      // Add assistant message
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: response,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, assistantMessage])
       playSound("notification")
     } catch (error) {
       console.error("[v0] AI error:", error)
+      const errorMessage: ChatMessage = {
+        role: "assistant",
+        content: "抱歉，发生了错误。请稍后重试。",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
       playSound("error")
     } finally {
       setIsLoading(false)
@@ -47,12 +70,28 @@ export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AI
   }
 
   const handleClearHistory = () => {
-    aiAssistant.clearHistory()
     setMessages([])
     playSound("click")
   }
 
+  const getProviderEmoji = (provider: string) => {
+    const emojis: Record<string, string> = {
+      "OpenAI": "🤖",
+      "Google": "🌟",
+      "Anthropic": "🎭",
+      "DeepSeek": "🔍",
+      "Microsoft": "💼",
+      "Meta": "🦙",
+      "Tencent": "🐧",
+      "Alibaba": "☁️",
+      "Mistral AI": "🌊"
+    }
+    return emojis[provider] || "🤖"
+  }
+
   if (!isOpen) return null
+
+  const models = getAvailableModels()
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-card border-l border-border shadow-2xl z-50 animate-slide-in-right flex flex-col">
@@ -74,15 +113,46 @@ export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AI
         </div>
       </div>
 
-      {/* AI Status */}
-      <div className="px-4 py-2 border-b border-border">
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-          <span className="text-lg">🤖</span>
-          <div className="text-left">
-            <p className="text-sm font-medium">Orbit AI 助手</p>
-            <p className="text-xs text-muted-foreground">智能对话 - 本地模式</p>
+      {/* Model Selector */}
+      <div className="px-4 py-2 border-b border-border relative">
+        <button
+          onClick={() => setShowModelSelector(!showModelSelector)}
+          className="w-full flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{getProviderEmoji(selectedModel.provider)}</span>
+            <div className="text-left">
+              <p className="text-sm font-medium">{selectedModel.name}</p>
+              <p className="text-xs text-muted-foreground">{selectedModel.provider} - API模式</p>
+            </div>
           </div>
-        </div>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showModelSelector ? "rotate-180" : ""}`} />
+        </button>
+
+        {/* Model Dropdown */}
+        {showModelSelector && (
+          <div className="absolute left-4 right-4 top-full mt-1 bg-card border border-border rounded-lg shadow-xl z-10 max-h-64 overflow-y-auto">
+            {models.map((model) => (
+              <button
+                key={model.id}
+                onClick={() => {
+                  setSelectedModel(model)
+                  setShowModelSelector(false)
+                  playSound("click")
+                }}
+                className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted transition-colors ${
+                  selectedModel.id === model.id ? "bg-primary/10" : ""
+                }`}
+              >
+                <span className="text-lg">{getProviderEmoji(model.provider)}</span>
+                <div>
+                  <p className="text-sm font-medium">{model.name}</p>
+                  <p className="text-xs text-muted-foreground">{model.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -105,9 +175,9 @@ export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AI
               </div>
             </div>
           ) : (
-            messages.map((message) => (
+            messages.map((message, idx) => (
               <div
-                key={message.id}
+                key={idx}
                 className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in-up`}
               >
                 {message.role === "assistant" && (
@@ -121,6 +191,9 @@ export function AIAssistantPanel({ isOpen, onClose, currentUrl, onNavigate }: AI
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.timestamp && (
+                    <p className="text-xs opacity-50 mt-1">{message.timestamp.toLocaleTimeString()}</p>
+                  )}
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
