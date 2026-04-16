@@ -1,4 +1,120 @@
-// Common word/phrase dictionary for translations
+// Real translation API using MyMemory (free, no API key required)
+const MYMEMORY_API = "https://api.mymemory.translated.net/get"
+
+// Language code mapping
+const languageCodes: Record<string, string> = {
+  en: "en",
+  zh: "zh-CN",
+  ja: "ja",
+  ko: "ko",
+  fr: "fr",
+  de: "de",
+  es: "es",
+  ru: "ru",
+  ar: "ar",
+}
+
+// Real translation function using MyMemory API
+export async function translateText(
+  text: string,
+  sourceLang: string,
+  targetLang: string
+): Promise<{ translatedText: string; detectedLanguage?: string }> {
+  try {
+    const sourceCode = sourceLang === "auto" ? "" : languageCodes[sourceLang] || sourceLang
+    const targetCode = languageCodes[targetLang] || targetLang
+    
+    const langPair = sourceCode ? `${sourceCode}|${targetCode}` : targetCode
+    
+    const url = `${MYMEMORY_API}?q=${encodeURIComponent(text)}&langpair=${langPair}`
+    
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`Translation API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    
+    if (data.responseStatus === 200 && data.responseData) {
+      return {
+        translatedText: data.responseData.translatedText,
+        detectedLanguage: data.responseData.detectedLanguage || sourceLang,
+      }
+    }
+    
+    // Fallback to dictionary if API fails
+    return fallbackTranslate(text, sourceLang, targetLang)
+  } catch (error) {
+    console.error("[v0] Translation API error:", error)
+    // Fallback to dictionary translation
+    return fallbackTranslate(text, sourceLang, targetLang)
+  }
+}
+
+// Fallback dictionary translation when API fails
+function fallbackTranslate(
+  text: string,
+  sourceLang: string,
+  targetLang: string
+): { translatedText: string; detectedLanguage?: string } {
+  const detectedLang = sourceLang === "auto" ? detectLanguage(text) : sourceLang
+  const lowerText = text.toLowerCase().trim()
+  
+  if (detectedLang === targetLang) {
+    return { translatedText: text, detectedLanguage: detectedLang }
+  }
+  
+  const targetDict = translationDictionary[targetLang] || translationDictionary.en
+  let translatedText = lowerText
+  
+  for (const [key, value] of Object.entries(translationDictionary.en)) {
+    if (lowerText.includes(key)) {
+      translatedText = translatedText.replace(key, targetDict[key] || value)
+    }
+  }
+  
+  return {
+    translatedText: translatedText.charAt(0).toUpperCase() + translatedText.slice(1),
+    detectedLanguage: detectedLang,
+  }
+}
+
+// Document translation using real API
+export async function translateDocument(
+  content: string,
+  format: "text" | "markdown" | "html",
+  sourceLang: string,
+  targetLang: string
+): Promise<string> {
+  const paragraphs = content.split(/\n\n+/)
+  const translatedParagraphs: string[] = []
+  
+  for (const paragraph of paragraphs) {
+    if (paragraph.trim()) {
+      // Add small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100))
+      const result = await translateText(paragraph, sourceLang, targetLang)
+      translatedParagraphs.push(result.translatedText)
+    } else {
+      translatedParagraphs.push("")
+    }
+  }
+  
+  return translatedParagraphs.join("\n\n")
+}
+
+// Detect language from text
+function detectLanguage(text: string): string {
+  if (/[\u4e00-\u9fff]/.test(text)) return "zh"
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return "ja"
+  if (/[\uac00-\ud7af]/.test(text)) return "ko"
+  if (/[\u0600-\u06ff]/.test(text)) return "ar"
+  if (/[\u0400-\u04ff]/.test(text)) return "ru"
+  return "en"
+}
+
+// Fallback dictionary for offline mode
 const translationDictionary: Record<string, Record<string, string>> = {
   en: {
     hello: "hello",
@@ -301,155 +417,4 @@ const sentencePatterns: Record<string, Record<string, string>> = {
     "how much": "كم الثمن",
     "what time": "كم الساعة",
   },
-}
-
-// Detect language from text
-function detectLanguage(text: string): string {
-  const lowerText = text.toLowerCase()
-
-  // Check for Chinese characters
-  if (/[\u4e00-\u9fff]/.test(text)) return "zh"
-  // Check for Japanese characters
-  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return "ja"
-  // Check for Korean characters
-  if (/[\uac00-\ud7af]/.test(text)) return "ko"
-  // Check for Arabic characters
-  if (/[\u0600-\u06ff]/.test(text)) return "ar"
-  // Check for Cyrillic (Russian)
-  if (/[\u0400-\u04ff]/.test(text)) return "ru"
-
-  // Check dictionary matches for European languages
-  for (const lang of ["fr", "de", "es"]) {
-    const dict = translationDictionary[lang]
-    for (const [key, value] of Object.entries(dict)) {
-      if (lowerText.includes(value.toLowerCase())) {
-        return lang
-      }
-    }
-  }
-
-  return "en" // Default to English
-}
-
-// Find reverse translation (from target language to source)
-function findSourceWord(word: string, sourceLang: string): string | null {
-  const sourceDict = translationDictionary[sourceLang]
-  if (!sourceDict) return null
-
-  for (const [engKey, translation] of Object.entries(sourceDict)) {
-    if (translation.toLowerCase() === word.toLowerCase()) {
-      return engKey
-    }
-  }
-  return null
-}
-
-export async function translateText(
-  text: string,
-  sourceLang: string,
-  targetLang: string,
-): Promise<{ translatedText: string; detectedLanguage?: string }> {
-  // Simulate network delay for better UX
-  await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500))
-
-  const detectedLang = sourceLang === "auto" ? detectLanguage(text) : sourceLang
-  const lowerText = text.toLowerCase().trim()
-
-  // If source and target are the same, return original
-  if (detectedLang === targetLang) {
-    return { translatedText: text, detectedLanguage: detectedLang }
-  }
-
-  // Get target dictionary
-  const targetDict = translationDictionary[targetLang] || translationDictionary.en
-  const targetPatterns = sentencePatterns[targetLang] || sentencePatterns.en
-
-  // Try to match sentence patterns first
-  for (const [pattern, translation] of Object.entries(sentencePatterns.en)) {
-    if (lowerText.includes(pattern)) {
-      const targetTranslation = targetPatterns[pattern] || translation
-      return { translatedText: targetTranslation, detectedLanguage: detectedLang }
-    }
-  }
-
-  // If source is not English, first find the English equivalent
-  let englishText = lowerText
-  if (detectedLang !== "en") {
-    const sourceDict = translationDictionary[detectedLang]
-    if (sourceDict) {
-      for (const [engKey, sourceWord] of Object.entries(sourceDict)) {
-        if (lowerText.includes(sourceWord.toLowerCase())) {
-          englishText = englishText.replace(sourceWord.toLowerCase(), engKey)
-        }
-      }
-    }
-  }
-
-  // Translate word by word
-  let translatedText = englishText
-  const words = englishText.split(/\s+/)
-
-  for (const word of words) {
-    const cleanWord = word.replace(/[.,!?;:'"()]/g, "").toLowerCase()
-    if (targetDict[cleanWord]) {
-      translatedText = translatedText.replace(new RegExp(`\\b${cleanWord}\\b`, "gi"), targetDict[cleanWord])
-    }
-  }
-
-  // If no translation found, return a helpful message with the original
-  if (translatedText === englishText && detectedLang !== targetLang) {
-    const langNames: Record<string, string> = {
-      zh: "中文",
-      en: "English",
-      ja: "日本語",
-      ko: "한국어",
-      fr: "Français",
-      de: "Deutsch",
-      es: "Español",
-      ru: "Русский",
-      ar: "العربية",
-    }
-
-    // Provide a basic phonetic/formatted response
-    const responses: Record<string, string> = {
-      zh: `[翻译] ${text}`,
-      ja: `[翻訳] ${text}`,
-      ko: `[번역] ${text}`,
-      fr: `[Traduction] ${text}`,
-      de: `[Übersetzung] ${text}`,
-      es: `[Traducción] ${text}`,
-      ru: `[Перевод] ${text}`,
-      ar: `[ترجمة] ${text}`,
-      en: `[Translation] ${text}`,
-    }
-
-    translatedText = responses[targetLang] || `[${langNames[targetLang] || targetLang}] ${text}`
-  }
-
-  return {
-    translatedText: translatedText.charAt(0).toUpperCase() + translatedText.slice(1),
-    detectedLanguage: detectedLang,
-  }
-}
-
-export async function translateDocument(
-  content: string,
-  format: "text" | "markdown" | "html",
-  sourceLang: string,
-  targetLang: string,
-): Promise<string> {
-  // Split content into paragraphs for better translation
-  const paragraphs = content.split(/\n\n+/)
-  const translatedParagraphs: string[] = []
-
-  for (const paragraph of paragraphs) {
-    if (paragraph.trim()) {
-      const result = await translateText(paragraph, sourceLang, targetLang)
-      translatedParagraphs.push(result.translatedText)
-    } else {
-      translatedParagraphs.push("")
-    }
-  }
-
-  return translatedParagraphs.join("\n\n")
 }

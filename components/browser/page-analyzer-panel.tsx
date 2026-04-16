@@ -31,13 +31,17 @@ export function PageAnalyzerPanel({ isOpen, onClose, currentUrl }: PageAnalyzerP
     setIsAnalyzing(true)
     playSound("whoosh")
 
-    // Simulate analysis
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const result = analyzePage(currentUrl)
-    setAnalysis(result)
-    setIsAnalyzing(false)
-    playSound("success")
+    try {
+      // Call real API for analysis
+      const result = await analyzePage(currentUrl)
+      setAnalysis(result)
+      playSound("success")
+    } catch (error) {
+      console.error("[v0] Analysis error:", error)
+      playSound("error")
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const getScoreColor = (score: number) => {
@@ -126,7 +130,7 @@ export function PageAnalyzerPanel({ isOpen, onClose, currentUrl }: PageAnalyzerP
                   </div>
 
                   <div className="space-y-3">
-                    {analysis.seo.issues.map((issue, i) => (
+                    {(analysis.seo.issues || []).map((issue, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-lg border border-border p-4">
                         {issue.severity === "error" ? (
                           <XCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
@@ -160,7 +164,7 @@ export function PageAnalyzerPanel({ isOpen, onClose, currentUrl }: PageAnalyzerP
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {analysis.performance.metrics.map((metric, i) => (
+                    {(analysis.performance.metrics || []).map((metric, i) => (
                       <div key={i} className="rounded-lg border border-border p-4">
                         <p className="mb-1 text-xs text-muted-foreground">{metric.name}</p>
                         <p className="text-2xl font-bold text-foreground">{metric.value}</p>
@@ -185,7 +189,7 @@ export function PageAnalyzerPanel({ isOpen, onClose, currentUrl }: PageAnalyzerP
                   </div>
 
                   <div className="space-y-3">
-                    {analysis.accessibility.issues.map((issue, i) => (
+                    {(analysis.accessibility.issues || []).map((issue, i) => (
                       <div key={i} className="flex items-start gap-3 rounded-lg border border-border p-4">
                         {issue.severity === "error" ? (
                           <XCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
