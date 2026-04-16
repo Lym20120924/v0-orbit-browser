@@ -91,6 +91,7 @@ interface BrowserToolbarProps {
   onOpenPageAnalyzer?: () => void
   onOpenSmartBookmarks?: () => void
   onOpenAPIHub?: () => void
+  onOpenAIChat?: () => void
 }
 
 function AnimatedIconButton({

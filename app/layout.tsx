@@ -11,7 +11,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Orbit Browser",
   description: "A modern web browser with advanced features",
-    generator: 'v0.app'
 }
 
 export const viewport = {

@@ -32,6 +32,7 @@ import { ScreenRecorderPanel } from "./browser/screen-recorder-panel"
 import { TabGroupsPanel } from "./browser/tab-groups-panel"
 import { SessionManagerPanel } from "./browser/session-manager-panel"
 import { AIAssistantPanel } from "./browser/ai-assistant-panel"
+import { AIChatPanel } from "./browser/ai-chat-panel"
 import { CloudSyncPanel } from "./browser/cloud-sync-panel"
 import { APIHubPanel } from "./browser/api-hub-panel"
 
@@ -157,6 +158,7 @@ export function OrbitBrowser() {
   const [pageAnalyzerOpen, setPageAnalyzerOpen] = useState(false)
   const [smartBookmarksOpen, setSmartBookmarksOpen] = useState(false)
   const [apiHubOpen, setAPIHubOpen] = useState(false)
+  const [aiChatOpen, setAIChatOpen] = useState(false)
 
   const translate = useCallback((key: string) => t(key, settings.language), [settings.language])
 
@@ -628,6 +630,7 @@ export function OrbitBrowser() {
         />
         <SmartBookmarksPanel isOpen={smartBookmarksOpen} onClose={() => setSmartBookmarksOpen(false)} />
         <APIHubPanel isOpen={apiHubOpen} onClose={() => setAPIHubOpen(false)} />
+        <AIChatPanel isOpen={aiChatOpen} onClose={() => setAIChatOpen(false)} />
       </div>
     </BrowserContext.Provider>
   )
