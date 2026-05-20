@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, type FormEvent } from "react"
 import {
   ArrowLeft,
@@ -19,6 +18,7 @@ import {
   Smartphone,
   Languages,
   FileText,
+  Bot,
   User,
   LogOut,
   Code2,
@@ -26,6 +26,18 @@ import {
   BookOpen,
   EyeOff,
   Maximize,
+  Puzzle,
+  Shield,
+  Activity,
+  Video,
+  Sparkles,
+  FolderKanban,
+  Clock,
+  Cloud,
+  QrCode,
+  Rss,
+  PenTool,
+  Briefcase,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useBrowser } from "../orbit-browser"
@@ -65,6 +77,22 @@ interface BrowserToolbarProps {
   readingModeOpen: boolean
   fullscreen: boolean
   user: UserType | null
+  onOpenExtensions?: () => void
+  onOpenAdBlocker?: () => void
+  onOpenPerformanceMonitor?: () => void
+  onOpenScreenRecorder?: () => void
+  onOpenTabGroups?: () => void
+  onOpenSessionManager?: () => void
+  onOpenAIAssistant?: () => void
+  onOpenCloudSync?: () => void
+  onOpenQRGenerator?: () => void
+  onOpenPageAnnotations?: () => void
+  onOpenRSSReader?: () => void
+  onOpenWorkspaceManager?: () => void
+  onOpenPageAnalyzer?: () => void
+  onOpenSmartBookmarks?: () => void
+  onOpenAPIHub?: () => void
+  onOpenAIChat?: () => void
 }
 
 function AnimatedIconButton({
@@ -184,6 +212,22 @@ export function BrowserToolbar({
   readingModeOpen,
   fullscreen,
   user,
+  onOpenExtensions,
+  onOpenAdBlocker,
+  onOpenPerformanceMonitor,
+  onOpenScreenRecorder,
+  onOpenTabGroups,
+  onOpenSessionManager,
+  onOpenAIAssistant,
+  onOpenCloudSync,
+  onOpenQRGenerator,
+  onOpenPageAnnotations,
+  onOpenRSSReader,
+  onOpenWorkspaceManager,
+  onOpenPageAnalyzer,
+  onOpenSmartBookmarks,
+  onOpenAPIHub,
+  onOpenAIChat,
 }: BrowserToolbarProps) {
   const { translate } = useBrowser()
   const [inputValue, setInputValue] = useState(url)
@@ -300,6 +344,18 @@ export function BrowserToolbar({
           <Star className={cn("h-4 w-4 transition-all duration-200", isBookmarked && "fill-primary scale-110")} />
         </button>
 
+        {onOpenExtensions && (
+          <AnimatedIconButton onClick={onOpenExtensions} title={translate("extensions")} soundEffect="pop">
+            <Puzzle className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
+        {onOpenAdBlocker && (
+          <AnimatedIconButton onClick={onOpenAdBlocker} title={translate("adBlocker")} soundEffect="pop">
+            <Shield className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
         <AnimatedIconButton
           onClick={onToggleReadingMode}
           active={readingModeOpen}
@@ -317,6 +373,36 @@ export function BrowserToolbar({
           <FileText className="h-4 w-4" />
         </AnimatedIconButton>
 
+        {onOpenAIAssistant && (
+          <AnimatedIconButton onClick={onOpenAIAssistant} title={translate("aiAssistant")} soundEffect="pop">
+            <Sparkles className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
+        {onOpenSmartBookmarks && (
+          <AnimatedIconButton onClick={onOpenSmartBookmarks} title={translate("smartBookmarks")} soundEffect="pop">
+            <Star className="h-4 w-4 fill-current" />
+          </AnimatedIconButton>
+        )}
+
+        {onOpenQRGenerator && (
+          <AnimatedIconButton onClick={onOpenQRGenerator} title={translate("qrGenerator")} soundEffect="pop">
+            <QrCode className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
+        {onOpenRSSReader && (
+          <AnimatedIconButton onClick={onOpenRSSReader} title={translate("rssReader")} soundEffect="pop">
+            <Rss className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
+        {onOpenPageAnnotations && (
+          <AnimatedIconButton onClick={onOpenPageAnnotations} title={translate("pageAnnotations")} soundEffect="pop">
+            <PenTool className="h-4 w-4" />
+          </AnimatedIconButton>
+        )}
+
         <div className="relative">
           <AnimatedIconButton
             onClick={() => {
@@ -332,7 +418,7 @@ export function BrowserToolbar({
           {showToolsMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowToolsMenu(false)} />
-              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-panel-appear">
+              <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-2 shadow-xl animate-panel-appear max-h-[80vh] overflow-y-auto">
                 <button
                   onClick={() => {
                     playSound("click")
@@ -348,6 +434,34 @@ export function BrowserToolbar({
                   <Code2 className="h-4 w-4" />
                   {translate("developerTools")}
                 </button>
+                {onOpenPerformanceMonitor && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenPerformanceMonitor()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Activity className="h-4 w-4" />
+                    {translate("performanceMonitor")}
+                  </button>
+                )}
+                {onOpenScreenRecorder && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenScreenRecorder()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Video className="h-4 w-4" />
+                    {translate("screenRecorder")}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     playSound("click")
@@ -388,6 +502,105 @@ export function BrowserToolbar({
                   <Maximize className="h-4 w-4" />
                   {translate("fullscreen")}
                 </button>
+                <div className="my-1 border-t border-border" />
+                {onOpenTabGroups && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenTabGroups()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                    {translate("tabGroups")}
+                  </button>
+                )}
+                {onOpenSessionManager && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenSessionManager()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Clock className="h-4 w-4" />
+                    {translate("sessionManager")}
+                  </button>
+                )}
+                {onOpenCloudSync && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenCloudSync()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Cloud className="h-4 w-4" />
+                    {translate("cloudSync")}
+                  </button>
+                )}
+                {onOpenWorkspaceManager && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenWorkspaceManager()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Briefcase className="h-4 w-4" />
+                    {translate("workspaceManager")}
+                  </button>
+                )}
+                {onOpenPageAnalyzer && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenPageAnalyzer()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Search className="h-4 w-4" />
+                    {translate("pageAnalyzer")}
+                  </button>
+                )}
+                {onOpenAPIHub && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenAPIHub()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Globe className="h-4 w-4" />
+                    {translate("apiHub")}
+                  </button>
+                )}
+                {onOpenAIChat && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenAIChat()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Bot className="h-4 w-4" />
+                    {translate("aiChat") || "AI Chat"}
+                  </button>
+                )}
               </div>
             </>
           )}

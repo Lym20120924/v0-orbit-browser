@@ -1,28 +1,28 @@
 "use client"
 
 import { useState } from "react"
-import { X, Languages, Check, RefreshCw, Copy, ArrowLeftRight, FileText, Globe, Sparkles } from "lucide-react"
+import {
+  X,
+  Languages,
+  Check,
+  RefreshCw,
+  Copy,
+  ArrowLeftRight,
+  FileText,
+  Globe,
+  Sparkles,
+  AlertCircle,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useBrowser } from "../orbit-browser"
 import { languages, type Language } from "@/lib/i18n"
+import { translateText } from "@/lib/translate-api"
+import { playSound } from "@/lib/sounds"
 
 interface TranslatePanelProps {
   isOpen: boolean
   onClose: () => void
   currentUrl: string
-}
-
-// 模拟翻译示例文本
-const sampleTexts: Record<Language, string> = {
-  zh: "欢迎使用 Orbit Browser，这是一款快速、安全、现代的浏览器。它支持多语言翻译、文件查看和设备模拟等功能。",
-  en: "Welcome to Orbit Browser, a fast, secure, and modern browser. It supports multi-language translation, file viewing, and device emulation features.",
-  ja: "Orbit Browserへようこそ。高速で安全、そしてモダンなブラウザです。多言語翻訳、ファイル閲覧、デバイスエミュレーションなどの機能をサポートしています。",
-  ko: "Orbit Browser에 오신 것을 환영합니다. 빠르고 안전하며 현대적인 브라우저입니다. 다국어 번역, 파일 보기, 기기 에뮬레이션 기능을 지원합니다.",
-  fr: "Bienvenue sur Orbit Browser, un navigateur rapide, sécurisé et moderne. Il prend en charge la traduction multilingue, la visualisation de fichiers et l'émulation d'appareils.",
-  de: "Willkommen bei Orbit Browser, einem schnellen, sicheren und modernen Browser. Er unterstützt mehrsprachige Übersetzung, Dateianzeige und Geräteemulation.",
-  es: "Bienvenido a Orbit Browser, un navegador rápido, seguro y moderno. Admite traducción multilingüe, visualización de archivos y emulación de dispositivos.",
-  ru: "Добро пожаловать в Orbit Browser — быстрый, безопасный и современный браузер. Он поддерживает многоязычный перевод, просмотр файлов и эмуляцию устройств.",
-  ar: "مرحبًا بك في Orbit Browser، متصفح سريع وآمن وحديث. يدعم الترجمة متعددة اللغات وعرض الملفات ومحاكاة الأجهزة.",
 }
 
 export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelProps) {
@@ -35,8 +35,8 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
   const [outputText, setOutputText] = useState("")
   const [autoTranslate, setAutoTranslate] = useState(false)
   const [copied, setCopied] = useState(false)
-
   const [pageTranslated, setPageTranslated] = useState(false)
+  const [error, setError] = useState<string>("")
 
   if (!isOpen) return null
 
@@ -44,16 +44,30 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
     if (!inputText.trim() && activeTab === "text") return
 
     setIsTranslating(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 500))
+    setError("")
+    playSound("whoosh")
 
-    if (activeTab === "text") {
-      // 模拟翻译 - 实际应用中应调用翻译 API
-      setOutputText(sampleTexts[targetLanguage] || inputText)
-    } else if (activeTab === "page") {
-      setPageTranslated(true)
+    try {
+      if (activeTab === "text") {
+        const result = await translateText(
+          inputText,
+          sourceLanguage === "auto" ? "auto" : sourceLanguage,
+          targetLanguage,
+        )
+        setOutputText(result.translatedText)
+        playSound("success")
+      } else if (activeTab === "page") {
+        // Simulate page translation
+        setPageTranslated(true)
+        playSound("success")
+      }
+    } catch (err) {
+      setError("Translation failed. Please try again.")
+      playSound("error")
+      console.error("[v0] Translation error:", err)
+    } finally {
+      setIsTranslating(false)
     }
-
-    setIsTranslating(false)
   }
 
   const handleSwapLanguages = () => {
@@ -61,27 +75,29 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
       const temp = sourceLanguage
       setSourceLanguage(targetLanguage)
       setTargetLanguage(temp)
-      // Swap text too
       const tempText = inputText
       setInputText(outputText)
       setOutputText(tempText)
+      playSound("toggle")
     }
   }
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(outputText)
     setCopied(true)
+    playSound("success")
     setTimeout(() => setCopied(false), 2000)
   }
 
   const handleShowOriginal = () => {
     setPageTranslated(false)
     setOutputText("")
+    playSound("click")
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl rounded-2xl border border-border bg-card shadow-2xl animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border p-4">
           <div className="flex items-center gap-2">
@@ -89,7 +105,10 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
             <h2 className="text-lg font-semibold text-foreground">{translate("translate")}</h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              playSound("click")
+              onClose()
+            }}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -104,11 +123,15 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                playSound("tab")
+                setActiveTab(tab.id)
+              }}
+              onMouseEnter={() => playSound("hover")}
               className={cn(
-                "flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors",
+                "flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-all duration-200",
                 activeTab === tab.id
-                  ? "border-b-2 border-primary text-foreground"
+                  ? "border-b-2 border-primary text-foreground scale-105"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -120,6 +143,13 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
 
         {/* Content */}
         <div className="p-6">
+          {error && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-destructive animate-shake">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           {/* Language Selection */}
           <div className="mb-6 flex items-center gap-4">
             <div className="flex-1">
@@ -128,8 +158,12 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
               </label>
               <select
                 value={sourceLanguage}
-                onChange={(e) => setSourceLanguage(e.target.value as Language | "auto")}
-                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                onChange={(e) => {
+                  playSound("click")
+                  setSourceLanguage(e.target.value as Language | "auto")
+                }}
+                onMouseEnter={() => playSound("hover")}
+                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none transition-all duration-200"
               >
                 <option value="auto">{translate("detectLanguage")}</option>
                 {languages.map((lang) => (
@@ -142,12 +176,13 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
 
             <button
               onClick={handleSwapLanguages}
+              onMouseEnter={() => playSound("hover")}
               disabled={sourceLanguage === "auto"}
               className={cn(
-                "mt-6 flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+                "mt-6 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200",
                 sourceLanguage === "auto"
                   ? "cursor-not-allowed text-muted-foreground/30"
-                  : "bg-secondary text-muted-foreground hover:bg-primary hover:text-primary-foreground",
+                  : "bg-secondary text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:scale-110 hover:rotate-180",
               )}
             >
               <ArrowLeftRight className="h-4 w-4" />
@@ -157,8 +192,12 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
               <label className="mb-2 block text-sm font-medium text-muted-foreground">{translate("translateTo")}</label>
               <select
                 value={targetLanguage}
-                onChange={(e) => setTargetLanguage(e.target.value as Language)}
-                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                onChange={(e) => {
+                  playSound("click")
+                  setTargetLanguage(e.target.value as Language)
+                }}
+                onMouseEnter={() => playSound("hover")}
+                className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none transition-all duration-200"
               >
                 {languages.map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -177,7 +216,7 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={translate("inputText") + "..."}
-                  className="h-40 w-full resize-none rounded-xl border border-border bg-secondary p-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                  className="h-40 w-full resize-none rounded-xl border border-border bg-secondary p-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-all duration-200"
                 />
               </div>
               <div className="flex flex-col">
@@ -186,7 +225,8 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
                   {outputText && (
                     <button
                       onClick={handleCopy}
-                      className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+                      onMouseEnter={() => playSound("hover")}
+                      className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
                     >
                       <Copy className="h-3 w-3" />
                       {copied ? translate("copied") : translate("copy")}
@@ -195,12 +235,12 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
                 </div>
                 <div className="relative h-40 w-full rounded-xl border border-border bg-muted/50 p-4">
                   {outputText ? (
-                    <p className="text-sm text-foreground">{outputText}</p>
+                    <p className="text-sm text-foreground whitespace-pre-wrap">{outputText}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">{translate("outputText")}...</p>
                   )}
                   {isTranslating && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/80">
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
                       <RefreshCw className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   )}
@@ -221,7 +261,7 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
                 </div>
               </div>
               {pageTranslated && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg bg-accent/10 p-3">
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-accent/10 p-3 animate-slide-in-right">
                   <Check className="h-4 w-4 text-accent" />
                   <span className="text-sm text-accent">{translate("translated")}</span>
                 </div>
@@ -230,18 +270,22 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
           )}
 
           {activeTab === "document" && (
-            <div className="mb-6 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8">
+            <div className="mb-6 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8 transition-all duration-200 hover:border-primary/50">
               <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="mb-2 font-medium text-foreground">{translate("translateDocument")}</p>
               <p className="mb-4 text-sm text-muted-foreground">PDF, Word, Excel, TXT, Markdown</p>
-              <button className="rounded-xl bg-secondary px-6 py-2 text-sm font-medium text-foreground hover:bg-secondary/80">
+              <button
+                onMouseEnter={() => playSound("hover")}
+                onClick={() => playSound("click")}
+                className="rounded-xl bg-secondary px-6 py-2 text-sm font-medium text-foreground hover:bg-secondary/80 transition-all duration-200 hover:scale-105"
+              >
                 {translate("openFile")}
               </button>
             </div>
           )}
 
           {/* Auto Translate Toggle */}
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-secondary/50 p-4">
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-secondary/50 p-4 transition-all duration-200 hover:bg-secondary">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-primary" />
               <div>
@@ -252,15 +296,19 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
               </div>
             </div>
             <button
-              onClick={() => setAutoTranslate(!autoTranslate)}
+              onClick={() => {
+                playSound("toggle")
+                setAutoTranslate(!autoTranslate)
+              }}
+              onMouseEnter={() => playSound("hover")}
               className={cn(
-                "relative h-6 w-11 rounded-full transition-colors",
+                "relative h-6 w-11 rounded-full transition-all duration-200",
                 autoTranslate ? "bg-primary" : "bg-muted",
               )}
             >
               <span
                 className={cn(
-                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200",
                   autoTranslate ? "translate-x-5" : "translate-x-0.5",
                 )}
               />
@@ -272,16 +320,18 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
             {pageTranslated && activeTab === "page" ? (
               <button
                 onClick={handleShowOriginal}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80"
+                onMouseEnter={() => playSound("hover")}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-secondary py-3 text-sm font-medium text-foreground transition-all duration-200 hover:bg-secondary/80 hover:scale-[1.02]"
               >
                 {translate("showOriginal")}
               </button>
             ) : (
               <button
                 onClick={handleTranslate}
+                onMouseEnter={() => playSound("hover")}
                 disabled={isTranslating || (activeTab === "text" && !inputText.trim())}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
+                  "flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-medium text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02]",
                   (isTranslating || (activeTab === "text" && !inputText.trim())) && "cursor-not-allowed opacity-50",
                 )}
               >
@@ -305,8 +355,8 @@ export function TranslatePanel({ isOpen, onClose, currentUrl }: TranslatePanelPr
         <div className="border-t border-border p-4">
           <p className="text-center text-xs text-muted-foreground">
             {settings.language === "zh"
-              ? `支持 ${languages.length} 种语言互译`
-              : `Supports translation between ${languages.length} languages`}
+              ? `支持 ${languages.length} 种语言互译 · 由 AI 提供技术支持`
+              : `Supports translation between ${languages.length} languages · Powered by AI`}
           </p>
         </div>
       </div>
