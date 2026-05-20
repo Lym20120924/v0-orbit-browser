@@ -18,6 +18,7 @@ import {
   Smartphone,
   Languages,
   FileText,
+  Bot,
   User,
   LogOut,
   Code2,
@@ -226,6 +227,7 @@ export function BrowserToolbar({
   onOpenPageAnalyzer,
   onOpenSmartBookmarks,
   onOpenAPIHub,
+  onOpenAIChat,
 }: BrowserToolbarProps) {
   const { translate } = useBrowser()
   const [inputValue, setInputValue] = useState(url)
@@ -583,6 +585,20 @@ export function BrowserToolbar({
                   >
                     <Globe className="h-4 w-4" />
                     {translate("apiHub")}
+                  </button>
+                )}
+                {onOpenAIChat && (
+                  <button
+                    onClick={() => {
+                      playSound("click")
+                      onOpenAIChat()
+                      setShowToolsMenu(false)
+                    }}
+                    onMouseEnter={() => playSound("hover")}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-all duration-200 hover:bg-secondary hover:scale-[1.02]"
+                  >
+                    <Bot className="h-4 w-4" />
+                    {translate("aiChat") || "AI Chat"}
                   </button>
                 )}
               </div>

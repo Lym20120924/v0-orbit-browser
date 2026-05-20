@@ -265,6 +265,23 @@ const translations: Record<Language, Record<string, string>> = {
     fullscreen: "Fullscreen",
     searchOrEnterUrl: "Search or enter URL",
 
+    // AI Chat
+    aiChat: "AI Chat",
+    newConversation: "New Conversation",
+    conversations: "Conversations",
+    systemPrompt: "System Prompt",
+    sendMessage: "Send Message",
+    stopGenerating: "Stop Generating",
+    regenerate: "Regenerate",
+    copyMessage: "Copy Message",
+    editMessage: "Edit Message",
+    exportConversation: "Export Conversation",
+    importConversation: "Import Conversation",
+    clearAllData: "Clear All Data",
+    voiceInput: "Voice Input",
+    voiceOutput: "Voice Output",
+    searchConversations: "Search Conversations",
+
     // Common
     close: "Close",
     save: "Save",
@@ -505,6 +522,23 @@ const translations: Record<Language, Record<string, string>> = {
     incognitoMode: "无痕模式",
     fullscreen: "全屏",
     searchOrEnterUrl: "搜索或输入网址",
+
+    // AI对话
+    aiChat: "AI对话",
+    newConversation: "新建对话",
+    conversations: "对话列表",
+    systemPrompt: "系统提示词",
+    sendMessage: "发送消息",
+    stopGenerating: "停止生成",
+    regenerate: "重新生成",
+    copyMessage: "复制消息",
+    editMessage: "编辑消息",
+    exportConversation: "导出对话",
+    importConversation: "导入对话",
+    clearAllData: "清除所有数据",
+    voiceInput: "语音输入",
+    voiceOutput: "语音播报",
+    searchConversations: "搜索对话",
 
     // 通用
     close: "关闭",

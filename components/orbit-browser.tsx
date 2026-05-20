@@ -494,6 +494,7 @@ export function OrbitBrowser() {
           onOpenPageAnalyzer={() => setPageAnalyzerOpen(true)}
           onOpenSmartBookmarks={() => setSmartBookmarksOpen(true)}
           onOpenAPIHub={() => setAPIHubOpen(true)}
+          onOpenAIChat={() => setAIChatOpen(true)}
         />
 
         {settings.showBookmarksBar && (
