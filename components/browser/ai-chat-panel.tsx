@@ -12,7 +12,7 @@ import {
   Square, Maximize2, Minimize2
 } from "lucide-react"
 import { playSound } from "@/lib/sounds"
-import { sendAIMessage, getAvailableModels, type AIModel } from "@/lib/ai-api"
+import { sendAIMessage, getAvailableModels, streamAIMessage, type AIModel } from "@/lib/ai-api"
 import {
   type Message, type Conversation, type ChatSettings,
   saveConversation, getConversation, getAllConversations, deleteConversation,
@@ -156,32 +156,99 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
       const contextLength = settings?.contextLength || 10
       const contextMessages = updatedConversation.messages.slice(-contextLength)
       
-      const response = await sendAIMessage(
-        userMessage.content,
-        selectedModel.id,
-        contextMessages.map(m => ({ role: m.role, content: m.content, timestamp: new Date(m.timestamp) }))
-      )
-
-      const assistantMessage: Message = {
-        id: generateId(),
+      // Create placeholder for streaming response
+      const assistantMessageId = generateId()
+      const streamingMessage: Message = {
+        id: assistantMessageId,
         role: "assistant",
-        content: response,
-        timestamp: Date.now(),
-        tokens: estimateTokens(response)
+        content: "",
+        timestamp: Date.now()
       }
-
-      const finalConversation: Conversation = {
+      
+      // Show streaming message
+      const streamingConversation = {
         ...updatedConversation,
-        messages: [...updatedConversation.messages, assistantMessage],
+        messages: [...updatedConversation.messages, streamingMessage],
         updatedAt: Date.now()
       }
+      setCurrentConversation(streamingConversation)
+      setIsStreaming(true)
+      
+      // Stream the response if enabled, otherwise use regular
+      if (settings?.streamingEnabled) {
+        let fullContent = ""
+        const stream = streamAIMessage(
+          userMessage.content,
+          selectedModel.id,
+          contextMessages.map(m => ({ role: m.role, content: m.content, timestamp: new Date(m.timestamp) }))
+        )
+        
+        for await (const chunk of stream) {
+          fullContent = chunk
+          // Update message content in real-time
+          const updatedStreamingConv = {
+            ...streamingConversation,
+            messages: streamingConversation.messages.map(m => 
+              m.id === assistantMessageId 
+                ? { ...m, content: fullContent }
+                : m
+            )
+          }
+          setCurrentConversation(updatedStreamingConv)
+        }
+        
+        // Finalize message
+        const finalMessage: Message = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: fullContent,
+          timestamp: Date.now(),
+          tokens: estimateTokens(fullContent)
+        }
+        
+        const finalConversation = {
+          ...updatedConversation,
+          messages: [...updatedConversation.messages, finalMessage],
+          updatedAt: Date.now()
+        }
+        
+        setCurrentConversation(finalConversation)
+        setConversations(prev => {
+          const filtered = prev.filter(c => c.id !== finalConversation.id)
+          return [finalConversation, ...filtered]
+        })
+        saveConversation(finalConversation)
+      } else {
+        // Non-streaming mode
+        const response = await sendAIMessage(
+          userMessage.content,
+          selectedModel.id,
+          contextMessages.map(m => ({ role: m.role, content: m.content, timestamp: new Date(m.timestamp) })),
+          settings?.systemPrompt
+        )
 
-      setCurrentConversation(finalConversation)
-      setConversations(prev => {
-        const filtered = prev.filter(c => c.id !== finalConversation.id)
-        return [finalConversation, ...filtered]
-      })
-      saveConversation(finalConversation)
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: response,
+          timestamp: Date.now(),
+          tokens: estimateTokens(response)
+        }
+
+        const finalConversation: Conversation = {
+          ...updatedConversation,
+          messages: [...updatedConversation.messages, assistantMessage],
+          updatedAt: Date.now()
+        }
+
+        setCurrentConversation(finalConversation)
+        setConversations(prev => {
+          const filtered = prev.filter(c => c.id !== finalConversation.id)
+          return [finalConversation, ...filtered]
+        })
+        saveConversation(finalConversation)
+      }
+      
       playSound("notification")
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
