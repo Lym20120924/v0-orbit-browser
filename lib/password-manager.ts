@@ -45,9 +45,21 @@ export function checkPasswordStrength(password: string): PasswordStrength {
 export function generatePassword(length = 16): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
   let password = ""
-  for (let i = 0; i < length; i++) {
-    password += chars[Math.floor(Math.random() * chars.length)]
+  
+  // Use Web Crypto API for cryptographically secure random generation
+  if (typeof window !== "undefined" && window.crypto) {
+    const array = new Uint8Array(length)
+    window.crypto.getRandomValues(array)
+    for (let i = 0; i < length; i++) {
+      password += chars[array[i] % chars.length]
+    }
+  } else {
+    // Fallback for non-browser environments
+    for (let i = 0; i < length; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)]
+    }
   }
+  
   return password
 }
 
