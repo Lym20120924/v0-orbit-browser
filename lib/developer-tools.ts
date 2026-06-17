@@ -28,11 +28,63 @@ export interface DOMElement {
 }
 
 export function parseHTML(html: string): DOMElement | null {
-  // 模拟 DOM 解析 - 实际应用中使用 DOMParser
+  if (typeof window === "undefined") {
+    // Server-side: simple regex-based parsing
+    return parseHTMLServer(html)
+  }
+  
+  // Client-side: use real DOMParser
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, "text/html")
+    return domNodeToElement(doc.documentElement)
+  } catch (error) {
+    console.error("HTML parse error:", error)
+    return null
+  }
+}
+
+function domNodeToElement(node: Element | Node): DOMElement {
+  if (node.nodeType === 3) { // Text node
+    return {
+      tagName: "#text",
+      attributes: {},
+      children: [],
+      textContent: (node as Text).textContent || undefined,
+    }
+  }
+  
+  const el = node as Element
+  const attributes: Record<string, string> = {}
+  for (let i = 0; i < el.attributes.length; i++) {
+    const attr = el.attributes[i]
+    attributes[attr.name] = attr.value
+  }
+  
+  const children = Array.from(el.childNodes)
+    .map(child => domNodeToElement(child))
+    .filter(child => !(child.tagName === "#text" && !child.textContent?.trim()))
+  
+  return {
+    tagName: el.tagName.toLowerCase(),
+    id: el.id || undefined,
+    className: el.className || undefined,
+    attributes,
+    children,
+  }
+}
+
+function parseHTMLServer(html: string): DOMElement {
+  // Server-side fallback: basic DOM structure
   return {
     tagName: "html",
     attributes: {},
     children: [
+      {
+        tagName: "head",
+        attributes: {},
+        children: [],
+      },
       {
         tagName: "body",
         attributes: {},
