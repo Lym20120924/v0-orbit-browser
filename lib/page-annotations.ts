@@ -83,11 +83,13 @@ export class PageAnnotationManager {
   }
 
   private saveAnnotations(): void {
+    if (typeof window === "undefined") return
     const data = Array.from(this.annotations.entries())
     localStorage.setItem("orbit_annotations", JSON.stringify(data))
   }
 
   private loadAnnotations(): void {
+    if (typeof window === "undefined") return
     const data = localStorage.getItem("orbit_annotations")
     if (data) {
       const entries = JSON.parse(data)
