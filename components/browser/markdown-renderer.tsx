@@ -212,22 +212,78 @@ function parseInline(text: string): React.ReactNode[] {
 }
 
 function parseInlineBasic(text: string, key: number): React.ReactNode {
-  // Handle LaTeX math (basic support)
-  if (text.includes("$$")) {
-    const parts = text.split(/\$\$([^$]+)\$\$/)
+  // Handle LaTeX math formulas with $$...$$
+  const latexMatch = text.match(/\$\$([^$]+)\$\$/)
+  if (latexMatch) {
     return (
-      <span key={`t-${key}`}>
-        {parts.map((part, i) => 
-          i % 2 === 1 ? (
-            <span key={i} className="font-mono bg-muted px-2 py-1 rounded text-sm">
-              {part}
-            </span>
-          ) : part
-        )}
+      <span key={`t-${key}`} className="inline-block">
+        <MathFormula formula={latexMatch[1]} />
       </span>
     )
   }
+  
+  // Handle inline LaTeX with $...$
+  const inlineLatexMatch = text.match(/\$([^$]+)\$/)
+  if (inlineLatexMatch) {
+    return (
+      <span key={`t-${key}`} className="inline">
+        <InlineMathFormula formula={inlineLatexMatch[1]} />
+      </span>
+    )
+  }
+  
   return <span key={`t-${key}`}>{text}</span>
+}
+
+function MathFormula({ formula }: { formula: string }) {
+  // Render LaTeX formula using a display style
+  return (
+    <div className="my-2 p-3 rounded-lg bg-muted/50 border border-border overflow-x-auto">
+      <span className="font-mono text-sm text-foreground select-all" title={formula}>
+        {/* Display formula with proper formatting */}
+        {renderLatexFormula(formula)}
+      </span>
+    </div>
+  )
+}
+
+function InlineMathFormula({ formula }: { formula: string }) {
+  // Render inline LaTeX formula
+  return (
+    <span className="inline-block px-1.5 py-0.5 rounded bg-muted font-mono text-sm text-foreground" title={formula}>
+      {renderLatexFormula(formula)}
+    </span>
+  )
+}
+
+function renderLatexFormula(formula: string): string {
+  // Convert common LaTeX to readable text
+  let result = formula
+  
+  // Subscripts and superscripts
+  result = result.replace(/\^{([^}]+)}/g, "^($1)")
+  result = result.replace(/_([a-zA-Z0-9])/g, "_$1")
+  result = result.replace(/_\{([^}]+)\}/g, "_($1)")
+  
+  // Greek letters
+  const greekMap: Record<string, string> = {
+    "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ",
+    "\\theta": "θ", "\\pi": "π", "\\sigma": "σ", "\\mu": "μ",
+    "\\lambda": "λ", "\\omega": "ω", "\\Delta": "Δ", "\\Sigma": "Σ"
+  }
+  
+  for (const [latex, char] of Object.entries(greekMap)) {
+    result = result.replace(new RegExp(latex, "g"), char)
+  }
+  
+  // Common functions
+  result = result.replace(/\\sqrt{([^}]+)}/g, "√($1)")
+  result = result.replace(/\\frac{([^}]+)}{([^}]+)}/g, "($1)/($2)")
+  result = result.replace(/\\sum/g, "Σ")
+  result = result.replace(/\\int/g, "∫")
+  result = result.replace(/\\prod/g, "∏")
+  
+  return result
 }
 
 function CodeBlock({ code, language }: { code: string; language: string }) {

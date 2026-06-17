@@ -438,11 +438,58 @@ export function FileViewer({ isOpen, onClose }: FileViewerProps) {
                   <iframe src={file.url} className="h-full w-full rounded-lg border border-border" />
                 )}
 
-                {["code", "markdown", "text"].includes(file.type.type) && (
+                {["code", "markdown", "text", "json", "xml", "yaml"].includes(file.type.type) && (
                   <div className="h-full w-full overflow-auto rounded-lg border border-border bg-card">
-                    <pre className="p-4 text-sm text-foreground">
-                      <code>{translatedContent || file.content}</code>
-                    </pre>
+                    {file.content ? (
+                      <pre className="p-4 text-sm font-mono text-foreground whitespace-pre-wrap break-words">
+                        <code className="text-xs leading-relaxed">
+                          {translatedContent || file.content}
+                        </code>
+                      </pre>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-muted-foreground text-sm">{translate("noContent")}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {file.type.type === "spreadsheet" && (
+                  <div className="h-full w-full overflow-auto rounded-lg border border-border bg-card p-4">
+                    <div className="inline-block min-w-full border border-border rounded-lg">
+                      <table className="text-xs">
+                        <tbody>
+                          <tr>
+                            <td className="border border-border px-3 py-2 bg-secondary">Spreadsheet Content</td>
+                          </tr>
+                          <tr>
+                            <td className="border border-border px-3 py-2 text-muted-foreground">
+                              {translate("fileOpen")} - {file.name}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {file.type.type === "archive" && (
+                  <div className="h-full w-full overflow-auto rounded-lg border border-border bg-card p-4">
+                    <div className="space-y-2">
+                      <p className="font-semibold text-foreground">{translate("archiveContent")} - {file.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatFileSize(file.size)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {!["image", "video", "audio", "pdf", "code", "markdown", "text", "json", "xml", "yaml", "spreadsheet", "archive"].includes(file.type.type) && (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <div className="text-center">
+                      <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-foreground font-medium">{file.name}</p>
+                      <p className="text-sm text-muted-foreground mt-2">{formatFileSize(file.size)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{translate("previewNotAvailable")}</p>
+                    </div>
                   </div>
                 )}
 
