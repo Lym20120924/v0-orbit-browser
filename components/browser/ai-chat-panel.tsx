@@ -30,7 +30,9 @@ interface AIChatPanelProps {
 export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   // Get available models
   const availableModels = getAvailableModels()
-  const defaultModel = availableModels.length > 0 ? availableModels[0] : null
+  // Set Deepseek as default, fallback to first available model
+  const defaultModel = availableModels.find(m => m.id === "deepseek-chat") || 
+                       (availableModels.length > 0 ? availableModels[0] : null)
 
   // State
   const [conversations, setConversations] = useState<Conversation[]>([])

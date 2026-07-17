@@ -23,6 +23,49 @@ export interface AIProvider {
 }
 
 export const AI_PROVIDERS: AIProvider[] = [
+  // Deepseek Models (Official API - Priority)
+  {
+    id: "deepseek",
+    name: "Deepseek",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/deepseek-ai/default.svg",
+    website: "https://deepseek.com",
+    apiKeyName: "DEEPSEEK_API_KEY",
+    models: [
+      {
+        id: "deepseek-chat",
+        name: "Deepseek Chat",
+        provider: "deepseek",
+        category: "chat",
+        description: "Deepseek官方聊天模型 - 低成本高性能",
+        maxTokens: 64000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+      {
+        id: "deepseek-coder",
+        name: "Deepseek Coder",
+        provider: "deepseek",
+        category: "code",
+        description: "Deepseek代码模型 - 编程专用",
+        maxTokens: 64000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+      {
+        id: "deepseek-reasoner",
+        name: "Deepseek Reasoner",
+        provider: "deepseek",
+        category: "reasoning",
+        description: "Deepseek推理模型 - 复杂问题解决",
+        maxTokens: 64000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+    ]
+  },
   // OpenAI Models
   {
     id: "openai",

@@ -1,8 +1,13 @@
 "use client"
 
-// RapidAPI Keys provided by user
+// API Keys
 const RAPIDAPI_KEY_FULL = "5e117c0989mshca3aa58cc6a164ep1e6d32jsna56e7442ae34"
 const RAPIDAPI_KEY_SHORT = "5e117c0989mshca3aa58cc6a164ep1e6d32"
+// Deepseek API key from environment
+// In Vercel: Create NEXT_PUBLIC_DEEPSEEK_API_KEY environment variable
+const DEEPSEEK_API_KEY = typeof window !== "undefined" 
+  ? (window as any).DEEPSEEK_API_KEY || localStorage.getItem("deepseek_api_key") || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || ""
+  : (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || "")
 
 export interface AIModel {
   id: string
@@ -12,11 +17,42 @@ export interface AIModel {
   host: string
   description: string
   apiKey: string
-  requestFormat: "openai" | "simple" | "custom"
+  requestFormat: "openai" | "simple" | "custom" | "deepseek"
 }
 
-// 180 AI Models with real RapidAPI endpoints
+// 180 AI Models with real RapidAPI endpoints + Deepseek
 export const AI_MODELS: AIModel[] = [
+  // Deepseek Models (Official API - Priority)
+  {
+    id: "deepseek-chat",
+    name: "Deepseek Chat",
+    provider: "Deepseek",
+    endpoint: "https://api.deepseek.com/chat/completions",
+    host: "api.deepseek.com",
+    description: "Deepseek官方聊天模型 - 低成本高性能",
+    apiKey: DEEPSEEK_API_KEY,
+    requestFormat: "deepseek"
+  },
+  {
+    id: "deepseek-coder",
+    name: "Deepseek Coder",
+    provider: "Deepseek",
+    endpoint: "https://api.deepseek.com/chat/completions",
+    host: "api.deepseek.com",
+    description: "Deepseek代码模型 - 编程专用",
+    apiKey: DEEPSEEK_API_KEY,
+    requestFormat: "deepseek"
+  },
+  {
+    id: "deepseek-reasoner",
+    name: "Deepseek Reasoner",
+    provider: "Deepseek",
+    endpoint: "https://api.deepseek.com/chat/completions",
+    host: "api.deepseek.com",
+    description: "Deepseek推理模型 - 复杂问题解决",
+    apiKey: DEEPSEEK_API_KEY,
+    requestFormat: "deepseek"
+  },
   // OpenAI Models
   {
     id: "gpt4o",
@@ -751,7 +787,7 @@ export async function sendAIMessage(
   }
   messages.push({ role: "user", content: message })
 
-  // Try model-specific endpoint first
+  // Try model-specific endpoint first (Deepseek gets priority)
   try {
     const response = await callEndpoint(
       model.endpoint,
@@ -759,7 +795,8 @@ export async function sendAIMessage(
       model.apiKey,
       model.requestFormat,
       messages,
-      message
+      message,
+      modelId
     )
     if (response) return response
   } catch (error) {
@@ -796,14 +833,75 @@ export async function sendAIMessage(
   return generateIntelligentResponse(message)
 }
 
+async function callDeepseekAPI(
+  messages: Array<{role: string, content: string}>,
+  modelId: string
+): Promise<string | null> {
+  if (!DEEPSEEK_API_KEY) {
+    console.error("[v0] Deepseek API key not configured")
+    return null
+  }
+
+  // Map model IDs to Deepseek model names
+  const modelMap: Record<string, string> = {
+    "deepseek-chat": "deepseek-chat",
+    "deepseek-coder": "deepseek-coder",
+    "deepseek-reasoner": "deepseek-reasoner"
+  }
+
+  const deepseekModel = modelMap[modelId] || "deepseek-chat"
+
+  try {
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: deepseekModel,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2048,
+        top_p: 0.9,
+        frequency_penalty: 0,
+        presence_penalty: 0
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      console.error("[v0] Deepseek API error:", error)
+      throw new Error(`Deepseek API error: ${response.status} - ${error.error?.message || "Unknown error"}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.choices?.[0]?.message?.content) {
+      return data.choices[0].message.content
+    }
+    
+    throw new Error("No content in Deepseek response")
+  } catch (error) {
+    console.error("[v0] Deepseek API call failed:", error)
+    return null
+  }
+}
+
 async function callEndpoint(
   url: string,
   host: string,
   apiKey: string,
-  format: "openai" | "simple" | "custom",
+  format: "openai" | "simple" | "custom" | "deepseek",
   messages: Array<{role: string, content: string}>,
-  question: string
+  question: string,
+  modelId?: string
 ): Promise<string | null> {
+  // Handle Deepseek separately
+  if (format === "deepseek" && modelId) {
+    return await callDeepseekAPI(messages, modelId)
+  }
+
   let body: string
   
   switch (format) {
