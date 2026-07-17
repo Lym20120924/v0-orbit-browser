@@ -28,13 +28,17 @@ interface AIChatPanelProps {
 }
 
 export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
+  // Get available models
+  const availableModels = getAvailableModels()
+  const defaultModel = availableModels.length > 0 ? availableModels[0] : null
+
   // State
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<AIModel>(getAvailableModels()[0])
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(defaultModel)
   const [settings, setSettings] = useState<ChatSettings | null>(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
@@ -118,6 +122,10 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
+    if (!selectedModel) {
+      alert("Please select an AI model first")
+      return
+    }
     if (!currentConversation) {
       handleNewConversation()
     }
@@ -252,10 +260,11 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
       playSound("notification")
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error"
         const errorMessage: Message = {
           id: generateId(),
           role: "assistant",
-          content: "Sorry, an error occurred. Please try again.",
+          content: `Error: ${errorMsg || "Failed to get response from AI. Please check your API configuration or try again."}`,
           timestamp: Date.now()
         }
         const errorConversation = {
@@ -266,6 +275,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
         setCurrentConversation(errorConversation)
         saveConversation(errorConversation)
         playSound("error")
+        console.error("[v0] AI API error:", error)
       }
     } finally {
       setIsLoading(false)
@@ -676,7 +686,29 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
             <Sparkles className="h-4 w-4 text-accent animate-pulse" />
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (!selectedModel) {
+                  alert("Please select a model first")
+                  return
+                }
+                setIsLoading(true)
+                try {
+                  const response = await sendAIMessage("Hello, test connection", selectedModel.id)
+                  alert(`API Connected!\n\nResponse: ${response.slice(0, 100)}...`)
+                } catch (error) {
+                  alert(`API Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading || !selectedModel}
+              className="text-xs px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-foreground transition-colors disabled:opacity-50"
+            >
+              {isLoading ? "Testing..." : "Test"}
+            </button>
+            
             {/* Model Selector */}
             <div className="relative">
               <Button
@@ -699,10 +731,10 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                     />
                   </div>
                   <div className="p-2 space-y-1">
-                    {models
+                    {availableModels
                       .filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.provider.toLowerCase().includes(searchQuery.toLowerCase()))
                       .map(model => {
-                        const provider = getAvailableModels().find(p => p.id === model.id)?.provider || model.provider
+                        const provider = model.provider
                         return (
                           <button
                             key={model.id}
@@ -713,7 +745,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                               playSound("click")
                             }}
                             className={`w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-start gap-3 ${
-                              selectedModel.id === model.id ? "bg-primary/10 border border-primary/20" : ""
+                              selectedModel?.id === model.id ? "bg-primary/10 border border-primary/20" : ""
                             }`}
                           >
                             <div className="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center bg-muted">

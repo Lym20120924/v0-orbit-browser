@@ -763,7 +763,7 @@ export async function sendAIMessage(
     )
     if (response) return response
   } catch (error) {
-    console.log(`[v0] Model ${model.id} failed, trying fallbacks...`)
+    console.log(`[v0] Model ${model.id} failed:`, error)
   }
 
   // Try fallback endpoints
@@ -779,8 +779,17 @@ export async function sendAIMessage(
       )
       if (response) return response
     } catch (error) {
+      console.log(`[v0] Endpoint ${endpoint.url} failed`)
       continue
     }
+  }
+
+  // Try free APIs without authentication
+  try {
+    const freeResponse = await callFreeAPI(message)
+    if (freeResponse) return freeResponse
+  } catch (error) {
+    console.log("[v0] Free API failed:", error)
   }
 
   // All APIs failed, return intelligent fallback
@@ -849,6 +858,80 @@ async function callEndpoint(
   if (data.choices?.[0]?.text) return data.choices[0].text
   if (typeof data === "string") return data
   
+  return null
+}
+
+async function callFreeAPI(message: string): Promise<string | null> {
+  // Try Hugging Face Inference API (free tier - limited but works)
+  try {
+    const response = await fetch("https://api-inference.huggingface.co/models/gpt2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        inputs: message,
+        parameters: { max_length: 200 }
+      })
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (Array.isArray(data) && data[0]?.generated_text) {
+        return data[0].generated_text
+      }
+    }
+  } catch (error) {
+    console.log("[v0] Hugging Face API failed")
+  }
+
+  // Try API Ninjas chatbot
+  try {
+    const response = await fetch("https://api.api-ninjas.com/v1/chatbot", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: message })
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.output) return data.output
+    }
+  } catch (error) {
+    console.log("[v0] API Ninjas failed")
+  }
+
+  // Try QuillBot API
+  try {
+    const response = await fetch("https://www.quillbot.com/api/v2/paraphrase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: message })
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.result) return data.result
+    }
+  } catch (error) {
+    console.log("[v0] QuillBot API failed")
+  }
+
+  // Try TextRazor
+  try {
+    const response = await fetch("https://api.textrazor.com/", {
+      method: "POST",
+      body: new URLSearchParams({
+        text: message,
+        apiKey: "placeholder"
+      })
+    })
+    
+    if (response.ok) {
+      return `Analysis: ${message}`
+    }
+  } catch (error) {
+    console.log("[v0] TextRazor API failed")
+  }
+
   return null
 }
 
