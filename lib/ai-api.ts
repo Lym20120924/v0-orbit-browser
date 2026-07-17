@@ -1,8 +1,11 @@
 "use client"
 
-// API Keys
+// API Keys - RapidAPI configuration
+// Main key (39 services)
 const RAPIDAPI_KEY_FULL = "5e117c0989mshca3aa58cc6a164ep1e6d32jsna56e7442ae34"
 const RAPIDAPI_KEY_SHORT = "5e117c0989mshca3aa58cc6a164ep1e6d32"
+// Special key (Hunyuan Image 3, Chat GPT)
+const RAPIDAPI_KEY_SPECIAL = "f6bf909e7fmsh70f771dbc78c4b8p11ab74jsn1e4d3b8732d6"
 // Deepseek API key from environment
 // In Vercel: Create NEXT_PUBLIC_DEEPSEEK_API_KEY environment variable
 const DEEPSEEK_API_KEY = typeof window !== "undefined" 
@@ -17,7 +20,8 @@ export interface AIModel {
   host: string
   description: string
   apiKey: string
-  requestFormat: "openai" | "simple" | "custom" | "deepseek"
+  requestFormat: "openai" | "simple" | "custom" | "deepseek" | "rapidapi"
+  category?: "chat" | "code" | "image" | "video" | "translation" | "tools" | "weather" | "verification"
 }
 
 // 180 AI Models with real RapidAPI endpoints + Deepseek
@@ -731,6 +735,289 @@ export const AI_MODELS: AIModel[] = [
     description: "AI translation service",
     apiKey: RAPIDAPI_KEY_FULL,
     requestFormat: "custom"
+  },
+  // Image Generation Services
+  {
+    id: "hunyuan-image-3",
+    name: "Hunyuan Image 3",
+    provider: "Hunyuan",
+    endpoint: "https://hunyuan-image3-api.p.rapidapi.com/generate",
+    host: "hunyuan-image3-api.p.rapidapi.com",
+    description: "Hunyuan Image Generation - 高质量图像生成",
+    apiKey: RAPIDAPI_KEY_SPECIAL,
+    requestFormat: "rapidapi",
+    category: "image"
+  },
+  {
+    id: "runwayml",
+    name: "RunwayML",
+    provider: "Runway",
+    endpoint: "https://runwayml-api.p.rapidapi.com/generate",
+    host: "runwayml-api.p.rapidapi.com",
+    description: "RunwayML - 图像视频生成",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "custom",
+    category: "image"
+  },
+  // Video Generation Services
+  {
+    id: "openai-sora",
+    name: "OpenAI Sora",
+    provider: "OpenAI",
+    endpoint: "https://openai-sora-api.p.rapidapi.com/generate",
+    host: "openai-sora-api.p.rapidapi.com",
+    description: "OpenAI Sora - 文本生成视频",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "video"
+  },
+  {
+    id: "cinematic-api",
+    name: "Cinematic API",
+    provider: "Cinematic",
+    endpoint: "https://cinematic-api.p.rapidapi.com/process",
+    host: "cinematic-api.p.rapidapi.com",
+    description: "Cinematic API - 视频处理和增强",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "video"
+  },
+  // Language Models (Chat)
+  {
+    id: "qwen-ai",
+    name: "Qwen AI",
+    provider: "Alibaba",
+    endpoint: "https://qwen-ai-api.p.rapidapi.com/chat",
+    host: "qwen-ai-api.p.rapidapi.com",
+    description: "阿里巴巴通义千问 - 多语言大模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "claude-opus",
+    name: "Claude Opus 4",
+    provider: "Anthropic",
+    endpoint: "https://claude-opus-4-61.p.rapidapi.com/chat",
+    host: "claude-opus-4-61.p.rapidapi.com",
+    description: "Claude Opus - Anthropic最强模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "doubao",
+    name: "Doubao 1.5",
+    provider: "ByteDance",
+    endpoint: "https://doubao-1-5-lite-32k3.p.rapidapi.com/chat",
+    host: "doubao-1-5-lite-32k3.p.rapidapi.com",
+    description: "字节跳动豆包 - 轻量级模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "gpt5-pro",
+    name: "GPT-5",
+    provider: "OpenAI",
+    endpoint: "https://gpt5-api.p.rapidapi.com/chat",
+    host: "gpt5-api.p.rapidapi.com",
+    description: "GPT-5 - 最新模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "copilot",
+    name: "GitHub Copilot",
+    provider: "Microsoft",
+    endpoint: "https://copilot-api.p.rapidapi.com/code",
+    host: "copilot-api.p.rapidapi.com",
+    description: "GitHub Copilot - 代码生成和补全",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "code"
+  },
+  {
+    id: "deepseek-r1",
+    name: "Deepseek R1",
+    provider: "Deepseek",
+    endpoint: "https://deepseek-r1-api.p.rapidapi.com/reasoning",
+    host: "deepseek-r1-api.p.rapidapi.com",
+    description: "Deepseek R1 - 推理专用模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "deepseek-v3",
+    name: "Deepseek V3",
+    provider: "Deepseek",
+    endpoint: "https://deepseek-v3-api.p.rapidapi.com/chat",
+    host: "deepseek-v3-api.p.rapidapi.com",
+    description: "Deepseek V3 - 完整功能模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "xai-2",
+    name: "xAI (Grok)",
+    provider: "xAI",
+    endpoint: "https://xai2.p.rapidapi.com/chat",
+    host: "xai2.p.rapidapi.com",
+    description: "xAI Grok - 实时网络访问能力",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "chatgpt-5x",
+    name: "ChatGPT-5-X",
+    provider: "OpenAI",
+    endpoint: "https://chatgpt-5-x-api-latest-models.p.rapidapi.com/chat",
+    host: "chatgpt-5-x-api-latest-models.p.rapidapi.com",
+    description: "ChatGPT-5-X - 最新官方模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "gpt4-turbo-vision",
+    name: "GPT-4 Turbo & Vision",
+    provider: "OpenAI",
+    endpoint: "https://gpt4-turbo-api.p.rapidapi.com/chat",
+    host: "gpt4-turbo-api.p.rapidapi.com",
+    description: "GPT-4 Turbo with Vision - 图像理解能力",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "chat"
+  },
+  {
+    id: "gemini-flash",
+    name: "Gemini 2.5 Flash",
+    provider: "Google",
+    endpoint: "https://gemini25-flash-api.p.rapidapi.com/generate",
+    host: "gemini25-flash-api.p.rapidapi.com",
+    description: "Google Gemini 2.5 Flash - 快速多模态模型",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "image"
+  },
+  // Translation Services
+  {
+    id: "google-translate-service",
+    name: "Google Translate",
+    provider: "Google",
+    endpoint: "https://google-translate-api.p.rapidapi.com/translate",
+    host: "google-translate-api.p.rapidapi.com",
+    description: "Google翻译 - 多语言翻译",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "translation"
+  },
+  {
+    id: "openl-translate",
+    name: "OpenL Translate",
+    provider: "OpenL",
+    endpoint: "https://openl-translate-api.p.rapidapi.com/translate",
+    host: "openl-translate-api.p.rapidapi.com",
+    description: "OpenL翻译 - 批量翻译",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "translation"
+  },
+  // Weather Services
+  {
+    id: "open-weather",
+    name: "Open Weather",
+    provider: "OpenWeather",
+    endpoint: "https://open-weather-weather-api.p.rapidapi.com/current",
+    host: "open-weather-weather-api.p.rapidapi.com",
+    description: "天气API - 实时天气预报",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "weather"
+  },
+  {
+    id: "meteosource-ai",
+    name: "Meteosource AI",
+    provider: "Meteosource",
+    endpoint: "https://meteosource-ai-weather.p.rapidapi.com/predict",
+    host: "meteosource-ai-weather.p.rapidapi.com",
+    description: "Meteosource - AI天气预测",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "weather"
+  },
+  // Verification Services
+  {
+    id: "ocr-service",
+    name: "OCR Service",
+    provider: "OCR",
+    endpoint: "https://ocr-api.p.rapidapi.com/image",
+    host: "ocr-api.p.rapidapi.com",
+    description: "OCR - 图像文字识别",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "verification"
+  },
+  {
+    id: "captcha-generator",
+    name: "Captcha Generator",
+    provider: "Captcha",
+    endpoint: "https://captcha-generator-api.p.rapidapi.com/generate",
+    host: "captcha-generator-api.p.rapidapi.com",
+    description: "验证码生成 - 安全验证",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "verification"
+  },
+  // YouTube Services
+  {
+    id: "youtube-api",
+    name: "YouTube API",
+    provider: "YouTube",
+    endpoint: "https://youtube-api.p.rapidapi.com/search",
+    host: "youtube-api.p.rapidapi.com",
+    description: "YouTube搜索和下载",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "tools"
+  },
+  // Utility Services
+  {
+    id: "ai-web-scraper",
+    name: "AI Web Scraper",
+    provider: "Web",
+    endpoint: "https://ai-web-scraper.p.rapidapi.com/scrape",
+    host: "ai-web-scraper.p.rapidapi.com",
+    description: "网页爬虫 - 智能数据提取",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "tools"
+  },
+  {
+    id: "elevenlabs-sound",
+    name: "ElevenLabs Sound",
+    provider: "ElevenLabs",
+    endpoint: "https://elevenlabs-sound-effects.p.rapidapi.com/generate",
+    host: "elevenlabs-sound-effects.p.rapidapi.com",
+    description: "音效生成 - AI声音合成",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "tools"
+  },
+  {
+    id: "ai-news",
+    name: "AI News",
+    provider: "News",
+    endpoint: "https://ai-news-api.p.rapidapi.com/latest",
+    host: "ai-news-api.p.rapidapi.com",
+    description: "AI新闻 - 最新资讯",
+    apiKey: RAPIDAPI_KEY_FULL,
+    requestFormat: "rapidapi",
+    category: "tools"
   }
 ]
 
@@ -915,7 +1202,7 @@ async function callEndpoint(
   url: string,
   host: string,
   apiKey: string,
-  format: "openai" | "simple" | "custom" | "deepseek",
+  format: "openai" | "simple" | "custom" | "deepseek" | "rapidapi",
   messages: Array<{role: string, content: string}>,
   question: string,
   modelId?: string
@@ -938,6 +1225,14 @@ async function callEndpoint(
       break
     case "simple":
       body = JSON.stringify({ question })
+      break
+    case "rapidapi":
+      // RapidAPI standard format
+      body = JSON.stringify({
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2048
+      })
       break
     case "custom":
     default:
