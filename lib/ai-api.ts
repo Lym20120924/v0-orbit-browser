@@ -24,32 +24,32 @@ export interface AIModel {
 export const AI_MODELS: AIModel[] = [
   // Deepseek Models (Official API - Priority)
   {
+    id: "deepseek-v4-pro",
+    name: "Deepseek V4 Pro",
+    provider: "Deepseek",
+    endpoint: "https://api.deepseek.com/chat/completions",
+    host: "api.deepseek.com",
+    description: "Deepseek V4 Pro - 带有扩展思考功能的高性能模型",
+    apiKey: DEEPSEEK_API_KEY,
+    requestFormat: "deepseek"
+  },
+  {
     id: "deepseek-chat",
     name: "Deepseek Chat",
     provider: "Deepseek",
     endpoint: "https://api.deepseek.com/chat/completions",
     host: "api.deepseek.com",
-    description: "Deepseek官方聊天模型 - 低成本高性能",
+    description: "Deepseek Chat - 标准聊天模型",
     apiKey: DEEPSEEK_API_KEY,
     requestFormat: "deepseek"
   },
   {
-    id: "deepseek-coder",
-    name: "Deepseek Coder",
+    id: "deepseek-code",
+    name: "Deepseek Code",
     provider: "Deepseek",
     endpoint: "https://api.deepseek.com/chat/completions",
     host: "api.deepseek.com",
-    description: "Deepseek代码模型 - 编程专用",
-    apiKey: DEEPSEEK_API_KEY,
-    requestFormat: "deepseek"
-  },
-  {
-    id: "deepseek-reasoner",
-    name: "Deepseek Reasoner",
-    provider: "Deepseek",
-    endpoint: "https://api.deepseek.com/chat/completions",
-    host: "api.deepseek.com",
-    description: "Deepseek推理模型 - 复杂问题解决",
+    description: "Deepseek Code - 代码生成和修复专用",
     apiKey: DEEPSEEK_API_KEY,
     requestFormat: "deepseek"
   },
@@ -842,49 +842,72 @@ async function callDeepseekAPI(
     return null
   }
 
-  // Map model IDs to Deepseek model names
+  // Map model IDs to official Deepseek model names
   const modelMap: Record<string, string> = {
+    "deepseek-v4-pro": "deepseek-v4-pro",
     "deepseek-chat": "deepseek-chat",
-    "deepseek-coder": "deepseek-coder",
-    "deepseek-reasoner": "deepseek-reasoner"
+    "deepseek-code": "deepseek-code"
   }
 
   const deepseekModel = modelMap[modelId] || "deepseek-chat"
+  
+  // Determine if this is a reasoning model
+  const isReasoningModel = deepseekModel === "deepseek-v4-pro"
 
   try {
+    const requestBody: any = {
+      model: deepseekModel,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 4096,
+      top_p: 0.95,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      stream: false
+    }
+
+    // Add thinking/reasoning parameters for V4 Pro
+    if (isReasoningModel) {
+      requestBody.thinking = {
+        type: "enabled",
+        budget_tokens: 10000
+      }
+      requestBody.reasoning_effort = "high"
+    }
+
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
       },
-      body: JSON.stringify({
-        model: deepseekModel,
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 2048,
-        top_p: 0.9,
-        frequency_penalty: 0,
-        presence_penalty: 0
-      })
+      body: JSON.stringify(requestBody)
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error("[v0] Deepseek API error:", error)
-      throw new Error(`Deepseek API error: ${response.status} - ${error.error?.message || "Unknown error"}`)
+      const errorData = await response.json().catch(() => ({}))
+      console.error("[v0] Deepseek API error:", errorData)
+      throw new Error(`Deepseek API error: ${response.status} - ${errorData.error?.message || errorData.message || "Unknown error"}`)
     }
 
     const data = await response.json()
     
+    // Extract content from response
     if (data.choices?.[0]?.message?.content) {
-      return data.choices[0].message.content
+      let content = data.choices[0].message.content
+      
+      // Add thinking content if available (for V4 Pro)
+      if (data.choices[0].message?.thinking) {
+        content = `**思考过程:**\n${data.choices[0].message.thinking}\n\n**回答:**\n${content}`
+      }
+      
+      return content
     }
     
     throw new Error("No content in Deepseek response")
   } catch (error) {
     console.error("[v0] Deepseek API call failed:", error)
-    return null
+    throw error
   }
 }
 
