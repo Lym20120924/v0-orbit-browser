@@ -464,6 +464,41 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
     e.target.value = ""
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    
+    const fileList = Array.from(files)
+    let fileContent = ""
+    
+    for (const file of fileList) {
+      try {
+        const content = await file.text()
+        fileContent += `\n\n### File: ${file.name}\n\`\`\`\n${content}\n\`\`\``
+      } catch (error) {
+        console.error(`Error reading file ${file.name}:`, error)
+      }
+    }
+    
+    if (fileContent) {
+      setInput(prev => prev + fileContent)
+      playSound("notification")
+    }
+    
+    e.target.value = ""
+  }
+
+  const handleDownloadResponse = (content: string, filename: string = "response") => {
+    const blob = new Blob([content], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${filename}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    playSound("click")
+  }
+
   const handleVoiceInput = () => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
       alert("Your browser does not support voice input")
@@ -655,23 +690,53 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
               </Button>
               
               {showModelSelector && (
-                <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-lg shadow-xl z-10 max-h-64 overflow-y-auto">
-                  {models.map(model => (
-                    <button
-                      key={model.id}
-                      onClick={() => {
-                        setSelectedModel(model)
-                        setShowModelSelector(false)
-                        playSound("click")
-                      }}
-                      className={`w-full text-left p-3 hover:bg-muted transition-colors ${
-                        selectedModel.id === model.id ? "bg-primary/10" : ""
-                      }`}
-                    >
-                      <p className="text-sm font-medium">{model.name}</p>
-                      <p className="text-xs text-muted-foreground">{model.provider}</p>
-                    </button>
-                  ))}
+                <div className="absolute right-0 top-full mt-1 w-80 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="sticky top-0 bg-card border-b border-border p-2 space-y-2">
+                    <Input
+                      placeholder="Search models..."
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {models
+                      .filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.provider.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(model => {
+                        const provider = getAvailableModels().find(p => p.id === model.id)?.provider || model.provider
+                        return (
+                          <button
+                            key={model.id}
+                            onClick={() => {
+                              setSelectedModel(model)
+                              setShowModelSelector(false)
+                              setSearchQuery("")
+                              playSound("click")
+                            }}
+                            className={`w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-start gap-3 ${
+                              selectedModel.id === model.id ? "bg-primary/10 border border-primary/20" : ""
+                            }`}
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center bg-muted">
+                              {provider && (
+                                <img 
+                                  src={provider} 
+                                  alt={model.provider} 
+                                  className="w-full h-full object-contain p-1"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none"
+                              }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{model.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{model.provider}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{model.category}</p>
+                            </div>
+                          </button>
+                        )
+                      })}
+                  </div>
                 </div>
               )}
             </div>
@@ -784,6 +849,13 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                             <RefreshCw className="h-3 w-3" />
                           </button>
                           <button
+                            onClick={() => handleDownloadResponse(message.content, `ai-response-${index}`)}
+                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                            title="Download response"
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                          <button
                             onClick={() => handleSpeak(message.content)}
                             className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
                             title="Read aloud"
@@ -865,6 +937,15 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                 
                 <div className="absolute right-2 bottom-2 flex items-center gap-1">
                   <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                    title="Upload file"
+                  >
+                    <Upload className="h-4 w-4" />
+                  </button>
+                  
+                  <button
                     onClick={handleVoiceInput}
                     disabled={isLoading}
                     className={`p-2 rounded-lg transition-colors ${
@@ -881,6 +962,16 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                     </span>
                   )}
                 </div>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".txt,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.pdf,.csv,.xml"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  aria-label="Upload file"
+                />
               </div>
               
               {isLoading ? (

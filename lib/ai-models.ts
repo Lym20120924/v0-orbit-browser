@@ -27,7 +27,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "openai",
     name: "OpenAI",
-    logo: "🤖",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/openai/default.svg",
     website: "https://openai.com",
     apiKeyName: "OPENAI_API_KEY",
     models: [
@@ -202,7 +202,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "anthropic",
     name: "Anthropic",
-    logo: "🧠",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/anthropic/default.svg",
     website: "https://anthropic.com",
     apiKeyName: "ANTHROPIC_API_KEY",
     models: [
@@ -1084,7 +1084,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "xai",
     name: "xAI",
-    logo: "🚀",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/x-ai/default.svg",
     website: "https://x.ai",
     apiKeyName: "XAI_API_KEY",
     models: [
@@ -1268,7 +1268,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "groq",
     name: "Groq",
-    logo: "⚡",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/groq/default.svg",
     website: "https://groq.com",
     apiKeyName: "GROQ_API_KEY",
     models: [
