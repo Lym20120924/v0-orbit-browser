@@ -6,11 +6,40 @@ const RAPIDAPI_KEY_FULL = "5e117c0989mshca3aa58cc6a164ep1e6d32jsna56e7442ae34"
 const RAPIDAPI_KEY_SHORT = "5e117c0989mshca3aa58cc6a164ep1e6d32"
 // Special key (Hunyuan Image 3, Chat GPT)
 const RAPIDAPI_KEY_SPECIAL = "f6bf909e7fmsh70f771dbc78c4b8p11ab74jsn1e4d3b8732d6"
-// Deepseek API key from environment
-// In Vercel: Create NEXT_PUBLIC_DEEPSEEK_API_KEY environment variable
-const DEEPSEEK_API_KEY = typeof window !== "undefined" 
-  ? (window as any).DEEPSEEK_API_KEY || localStorage.getItem("deepseek_api_key") || process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || ""
-  : (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY || "")
+// Deepseek API key initialization
+// Priority: Window object > localStorage > env var > hardcoded fallback
+let DEEPSEEK_API_KEY = ""
+
+// Initialize Deepseek key
+function initDeepseekKey(): string {
+  if (DEEPSEEK_API_KEY) return DEEPSEEK_API_KEY
+  
+  if (typeof window !== "undefined") {
+    // Client-side: check window, localStorage, then env
+    DEEPSEEK_API_KEY = 
+      (window as any).DEEPSEEK_API_KEY || 
+      localStorage.getItem("deepseek_api_key") || 
+      (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY as string) ||
+      // Fallback - user provided key
+      "sk-58c67599c23a40dfbe021d8157a57d81"
+  } else {
+    // Server-side: use env variable
+    DEEPSEEK_API_KEY = 
+      (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY as string) ||
+      (process.env.DEEPSEEK_API_KEY as string) ||
+      "sk-58c67599c23a40dfbe021d8157a57d81"
+  }
+  
+  return DEEPSEEK_API_KEY
+}
+
+// Get Deepseek API key with initialization
+function getDeepseekKey(): string {
+  if (!DEEPSEEK_API_KEY) {
+    initDeepseekKey()
+  }
+  return DEEPSEEK_API_KEY
+}
 
 export interface AIModel {
   id: string
@@ -1056,6 +1085,22 @@ const PRIMARY_ENDPOINTS = [
   }
 ]
 
+// Allow setting Deepseek API key from UI
+export function setDeepseekKey(key: string): void {
+  if (key && key.startsWith("sk-")) {
+    DEEPSEEK_API_KEY = key
+    if (typeof window !== "undefined") {
+      localStorage.setItem("deepseek_api_key", key)
+    }
+    console.log("[v0] Deepseek API key configured successfully")
+  }
+}
+
+// Get current Deepseek API key
+export function getCurrentDeepseekKey(): string {
+  return getDeepseekKey()
+}
+
 export async function sendAIMessage(
   message: string,
   modelId: string = "chatgpt",
@@ -1124,8 +1169,10 @@ async function callDeepseekAPI(
   messages: Array<{role: string, content: string}>,
   modelId: string
 ): Promise<string | null> {
-  if (!DEEPSEEK_API_KEY) {
-    console.error("[v0] Deepseek API key not configured")
+  const apiKey = getDeepseekKey()
+  
+  if (!apiKey || apiKey === "") {
+    console.error("[v0] Deepseek API key not available")
     return null
   }
 
@@ -1166,7 +1213,7 @@ async function callDeepseekAPI(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+        "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
     })

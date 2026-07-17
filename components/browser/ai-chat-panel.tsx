@@ -12,7 +12,7 @@ import {
   Square, Maximize2, Minimize2
 } from "lucide-react"
 import { playSound } from "@/lib/sounds"
-import { sendAIMessage, getAvailableModels, streamAIMessage, type AIModel } from "@/lib/ai-api"
+import { sendAIMessage, getAvailableModels, streamAIMessage, setDeepseekKey, getCurrentDeepseekKey, type AIModel } from "@/lib/ai-api"
 import {
   type Message, type Conversation, type ChatSettings,
   saveConversation, getConversation, getAllConversations, deleteConversation,
@@ -52,11 +52,23 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState("")
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(!!getCurrentDeepseekKey())
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Initialize API key on mount
+  useEffect(() => {
+    const currentKey = getCurrentDeepseekKey()
+    setApiKeyConfigured(!!currentKey && currentKey !== "")
+    if (!currentKey || currentKey === "") {
+      setShowApiKeyDialog(true)
+    }
+  }, [])
 
   // Load data on mount
   useEffect(() => {
@@ -94,6 +106,18 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isOpen, currentConversation])
+
+  const handleSaveApiKey = () => {
+    if (apiKeyInput && apiKeyInput.startsWith("sk-")) {
+      setDeepseekKey(apiKeyInput)
+      setApiKeyConfigured(true)
+      setShowApiKeyDialog(false)
+      setApiKeyInput("")
+      playSound("success")
+    } else {
+      alert("Please enter a valid Deepseek API key (starts with 'sk-')")
+    }
+  }
 
   const loadData = async () => {
     const [loadedConversations, loadedSettings] = await Promise.all([
@@ -1041,6 +1065,63 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* API Key Configuration Dialog */}
+      {showApiKeyDialog && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Deepseek API Configuration</h3>
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              Enter your Deepseek API key to enable AI chat. Get one from {" "}
+              <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                platform.deepseek.com
+              </a>
+            </p>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">API Key</label>
+              <Input
+                type="password"
+                placeholder="sk-..."
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSaveApiKey()
+                  }
+                }}
+              />
+            </div>
+            
+            <div className="bg-muted p-3 rounded-lg text-xs text-muted-foreground">
+              <p>Your API key is stored locally in your browser and never sent to any server.</p>
+            </div>
+            
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowApiKeyDialog(false)
+                  setApiKeyInput("")
+                }}
+              >
+                Skip
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveApiKey}
+                disabled={!apiKeyInput}
+              >
+                Save API Key
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && settings && (
