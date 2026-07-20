@@ -7,8 +7,9 @@ const RAPIDAPI_KEY_SHORT = "5e117c0989mshca3aa58cc6a164ep1e6d32"
 // Special key (Hunyuan Image 3, Chat GPT)
 const RAPIDAPI_KEY_SPECIAL = "f6bf909e7fmsh70f771dbc78c4b8p11ab74jsn1e4d3b8732d6"
 // Deepseek API key initialization
-// Priority: Window object > localStorage > env var > hardcoded fallback
+// Track if Deepseek is available
 let DEEPSEEK_API_KEY = ""
+let DEEPSEEK_AVAILABLE = true
 
 // Initialize Deepseek key
 function initDeepseekKey(): string {
@@ -20,14 +21,13 @@ function initDeepseekKey(): string {
       (window as any).DEEPSEEK_API_KEY || 
       localStorage.getItem("deepseek_api_key") || 
       (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY as string) ||
-      // Fallback - user provided key
-      "sk-58c67599c23a40dfbe021d8157a57d81"
+      ""
   } else {
     // Server-side: use env variable
     DEEPSEEK_API_KEY = 
       (process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY as string) ||
       (process.env.DEEPSEEK_API_KEY as string) ||
-      "sk-58c67599c23a40dfbe021d8157a57d81"
+      ""
   }
   
   return DEEPSEEK_API_KEY
@@ -39,6 +39,16 @@ function getDeepseekKey(): string {
     initDeepseekKey()
   }
   return DEEPSEEK_API_KEY
+}
+
+// Mark Deepseek as unavailable
+function setDeepseekUnavailable(): void {
+  DEEPSEEK_AVAILABLE = false
+}
+
+// Check if Deepseek is available
+function isDeepseekAvailable(): boolean {
+  return DEEPSEEK_AVAILABLE && !!getDeepseekKey()
 }
 
 export interface AIModel {
@@ -1089,6 +1099,7 @@ const PRIMARY_ENDPOINTS = [
 export function setDeepseekKey(key: string): void {
   if (key && key.startsWith("sk-")) {
     DEEPSEEK_API_KEY = key
+    DEEPSEEK_AVAILABLE = true // Reset availability when new key is set
     if (typeof window !== "undefined") {
       localStorage.setItem("deepseek_api_key", key)
     }
@@ -1099,6 +1110,11 @@ export function setDeepseekKey(key: string): void {
 // Get current Deepseek API key
 export function getCurrentDeepseekKey(): string {
   return getDeepseekKey()
+}
+
+// Check if Deepseek is configured and available
+export function isDeepseekConfigured(): boolean {
+  return isDeepseekAvailable()
 }
 
 export async function sendAIMessage(
@@ -1119,20 +1135,24 @@ export async function sendAIMessage(
   }
   messages.push({ role: "user", content: message })
 
-  // Try model-specific endpoint first (Deepseek gets priority)
-  try {
-    const response = await callEndpoint(
-      model.endpoint,
-      model.host,
-      model.apiKey,
-      model.requestFormat,
-      messages,
-      message,
-      modelId
-    )
-    if (response) return response
-  } catch (error) {
-    console.log(`[v0] Model ${model.id} failed:`, error)
+  // Try model-specific endpoint first (Deepseek gets priority if available)
+  if (model.provider !== "Deepseek" || isDeepseekAvailable()) {
+    try {
+      const response = await callEndpoint(
+        model.endpoint,
+        model.host,
+        model.apiKey,
+        model.requestFormat,
+        messages,
+        message,
+        modelId
+      )
+      if (response) return response
+    } catch (error) {
+      console.log(`[v0] Model ${model.id} failed:`, error)
+    }
+  } else {
+    console.log(`[v0] Deepseek unavailable, skipping to RapidAPI fallbacks`)
   }
 
   // Try fallback endpoints
@@ -1220,8 +1240,17 @@ async function callDeepseekAPI(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      const errorMsg = errorData.error?.message || errorData.message || `HTTP ${response.status}`
+      
+      // Check if it's an authentication error
+      if (response.status === 401 || errorMsg.includes("Authentication") || errorMsg.includes("invalid")) {
+        console.warn("[v0] Deepseek API authentication failed, marking as unavailable")
+        setDeepseekUnavailable()
+        return null
+      }
+      
       console.error("[v0] Deepseek API error:", errorData)
-      throw new Error(`Deepseek API error: ${response.status} - ${errorData.error?.message || errorData.message || "Unknown error"}`)
+      throw new Error(`Deepseek API error: ${response.status} - ${errorMsg}`)
     }
 
     const data = await response.json()
@@ -1241,7 +1270,7 @@ async function callDeepseekAPI(
     throw new Error("No content in Deepseek response")
   } catch (error) {
     console.error("[v0] Deepseek API call failed:", error)
-    throw error
+    return null
   }
 }
 

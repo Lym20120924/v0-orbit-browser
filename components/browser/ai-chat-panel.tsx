@@ -12,7 +12,7 @@ import {
   Square, Maximize2, Minimize2
 } from "lucide-react"
 import { playSound } from "@/lib/sounds"
-import { sendAIMessage, getAvailableModels, streamAIMessage, setDeepseekKey, getCurrentDeepseekKey, type AIModel } from "@/lib/ai-api"
+import { sendAIMessage, getAvailableModels, streamAIMessage, setDeepseekKey, getCurrentDeepseekKey, isDeepseekConfigured, type AIModel } from "@/lib/ai-api"
 import {
   type Message, type Conversation, type ChatSettings,
   saveConversation, getConversation, getAllConversations, deleteConversation,
@@ -55,6 +55,8 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState("")
   const [apiKeyConfigured, setApiKeyConfigured] = useState(!!getCurrentDeepseekKey())
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [useRapidAPI, setUseRapidAPI] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -288,10 +290,18 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         const errorMsg = error instanceof Error ? error.message : "Unknown error"
+        
+        // Check if it's a Deepseek authentication error
+        if (errorMsg.includes("Authentication") || errorMsg.includes("invalid")) {
+          setApiError("Deepseek API key is invalid. Please update it or use RapidAPI services.")
+          setUseRapidAPI(true)
+          setShowApiKeyDialog(true)
+        }
+        
         const errorMessage: Message = {
           id: generateId(),
           role: "assistant",
-          content: `Error: ${errorMsg || "Failed to get response from AI. Please check your API configuration or try again."}`,
+          content: `⚠️ 错误: ${errorMsg || "无法获取AI响应。请检查API配置或重试。"}`,
           timestamp: Date.now()
         }
         const errorConversation = {
@@ -1071,14 +1081,26 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Deepseek API Configuration</h3>
+              <h3 className="text-lg font-semibold">
+                {apiError ? "API Configuration Error" : "Deepseek API Configuration"}
+              </h3>
             </div>
             
+            {apiError && (
+              <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-lg text-sm text-destructive">
+                {apiError}
+              </div>
+            )}
+            
             <p className="text-sm text-muted-foreground">
-              Enter your Deepseek API key to enable AI chat. Get one from {" "}
-              <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                platform.deepseek.com
-              </a>
+              {useRapidAPI 
+                ? "The Deepseek API key appears to be invalid. You can try a new key, or skip to use our RapidAPI services which don't require authentication."
+                : "Enter your Deepseek API key to enable AI chat. Get one from "}
+              {!useRapidAPI && (
+                <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  platform.deepseek.com
+                </a>
+              )}
             </p>
             
             <div className="space-y-2">
