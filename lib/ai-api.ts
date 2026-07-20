@@ -1331,34 +1331,12 @@ export interface ChatMessage {
   timestamp: Date
 }
 
-// Primary API endpoints to try in order
-const PRIMARY_ENDPOINTS = [
-  {
-    url: "https://chatgpt-42.p.rapidapi.com/conversationgpt4",
-    host: "qwen-ai-all-models.p.rapidapi.com",
-    format: "custom"
-  },
-  {
-    url: "https://gpt-4-1-mini.p.rapidapi.com/chat/completions",
-    host: "qwen-ai-all-models.p.rapidapi.com",
-    format: "openai"
-  },
-  {
-    url: "https://open-ai21.p.rapidapi.com/conversationgpt35",
-    host: "qwen-ai-all-models.p.rapidapi.com",
-    format: "custom"
-  },
-  {
-    url: "https://simple-chatgpt-api.p.rapidapi.com/ask",
-    host: "qwen-ai-all-models.p.rapidapi.com",
-    format: "simple"
-  },
-  {
-    url: "https://chatgpt-best-price.p.rapidapi.com/v1/chat/completions",
-    host: "qwen-ai-all-models.p.rapidapi.com",
-    format: "openai"
-  }
-]
+// Primary endpoint - unified RapidAPI gateway
+const PRIMARY_ENDPOINT = {
+  url: "https://qwen-ai-all-models.p.rapidapi.com",
+  host: "qwen-ai-all-models.p.rapidapi.com",
+  format: "openai"
+}
 
 // Allow setting Deepseek API key from UI
 export function setDeepseekKey(key: string): void {
@@ -1420,22 +1398,19 @@ export async function sendAIMessage(
     console.log(`[v0] Deepseek unavailable, skipping to RapidAPI fallbacks`)
   }
 
-  // Try fallback endpoints
-  for (const endpoint of PRIMARY_ENDPOINTS) {
-    try {
-      const response = await callEndpoint(
-        endpoint.url,
-        endpoint.host,
-        RAPIDAPI_KEY_FULL,
-        endpoint.format as "openai" | "simple" | "custom",
-        messages,
-        message
-      )
-      if (response) return response
-    } catch (error) {
-      console.log(`[v0] Endpoint ${endpoint.url} failed`)
-      continue
-    }
+  // Try primary RapidAPI endpoint (qwen-ai-all-models)
+  try {
+    const response = await callEndpoint(
+      PRIMARY_ENDPOINT.url,
+      PRIMARY_ENDPOINT.host,
+      RAPIDAPI_KEY_FULL,
+      PRIMARY_ENDPOINT.format as "openai" | "simple" | "custom",
+      messages,
+      message
+    )
+    if (response) return response
+  } catch (error) {
+    console.log(`[v0] Primary endpoint ${PRIMARY_ENDPOINT.url} failed:`, error)
   }
 
   // Try free APIs without authentication
@@ -1568,9 +1543,10 @@ async function callEndpoint(
       body = JSON.stringify({ question })
       break
     case "rapidapi":
-      // RapidAPI standard format
+      // RapidAPI qwen-ai-all-models format - expects messages array
       body = JSON.stringify({
         messages: messages,
+        model: "gpt-4",
         temperature: 0.7,
         max_tokens: 2048
       })
@@ -1597,6 +1573,8 @@ async function callEndpoint(
   })
 
   if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    console.error(`[v0] RapidAPI error at ${url}:`, response.status, errorText)
     throw new Error(`API error: ${response.status}`)
   }
 
