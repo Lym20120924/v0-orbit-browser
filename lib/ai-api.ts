@@ -1495,6 +1495,8 @@ async function callDeepseekAPI(
 
     const data = await response.json()
     
+    console.log("[v0] Deepseek API response:", JSON.stringify(data, null, 2))
+    
     // Extract content from response
     if (data.choices?.[0]?.message?.content) {
       let content = data.choices[0].message.content
@@ -1507,6 +1509,21 @@ async function callDeepseekAPI(
       return content
     }
     
+    // Alternative response formats
+    if (data.result) {
+      return data.result
+    }
+    if (data.message) {
+      return data.message
+    }
+    if (data.text) {
+      return data.text
+    }
+    if (typeof data === 'string') {
+      return data
+    }
+    
+    console.error("[v0] Deepseek response structure:", data)
     throw new Error("No content in Deepseek response")
   } catch (error) {
     console.error("[v0] Deepseek API call failed:", error)
