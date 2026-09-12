@@ -38,6 +38,7 @@ export function getAdBlockRules(): AdBlockRule[] {
 }
 
 export function saveAdBlockRules(rules: AdBlockRule[]) {
+  if (typeof window === "undefined") return
   localStorage.setItem("orbit_adblock_rules", JSON.stringify(rules))
 }
 
@@ -61,8 +62,8 @@ export function shouldBlockUrl(url: string): boolean {
 
 export function getBlockedAds(): BlockedAd[] {
   if (typeof window === "undefined") return []
-  const saved = localStorage.getItem("orbit_blocked_ads")
-  return saved ? JSON.parse(saved) : []
+  const blocked = localStorage.getItem("orbit_blocked_ads")
+  return blocked ? JSON.parse(blocked) : []
 }
 
 export function addBlockedAd(ad: Omit<BlockedAd, "id" | "timestamp">) {

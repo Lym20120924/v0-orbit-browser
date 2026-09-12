@@ -12,7 +12,7 @@ import {
   Square, Maximize2, Minimize2
 } from "lucide-react"
 import { playSound } from "@/lib/sounds"
-import { sendAIMessage, getAvailableModels, streamAIMessage, type AIModel } from "@/lib/ai-api"
+import { sendAIMessage, getAvailableModels, streamAIMessage, setDeepseekKey, getCurrentDeepseekKey, isDeepseekConfigured, type AIModel } from "@/lib/ai-api"
 import {
   type Message, type Conversation, type ChatSettings,
   saveConversation, getConversation, getAllConversations, deleteConversation,
@@ -28,13 +28,20 @@ interface AIChatPanelProps {
 }
 
 export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
+  // Get available models
+  const availableModels = getAvailableModels()
+  // Set Deepseek V4 Pro as default, fallback to Deepseek Chat, then first available
+  const defaultModel = availableModels.find(m => m.id === "deepseek-v4-pro") || 
+                       availableModels.find(m => m.id === "deepseek-chat") || 
+                       (availableModels.length > 0 ? availableModels[0] : null)
+
   // State
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<AIModel>(getAvailableModels()[0])
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(defaultModel)
   const [settings, setSettings] = useState<ChatSettings | null>(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
@@ -45,11 +52,25 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState("")
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(!!getCurrentDeepseekKey())
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [useRapidAPI, setUseRapidAPI] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Initialize API key on mount
+  useEffect(() => {
+    const currentKey = getCurrentDeepseekKey()
+    setApiKeyConfigured(!!currentKey && currentKey !== "")
+    if (!currentKey || currentKey === "") {
+      setShowApiKeyDialog(true)
+    }
+  }, [])
 
   // Load data on mount
   useEffect(() => {
@@ -88,6 +109,18 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isOpen, currentConversation])
 
+  const handleSaveApiKey = () => {
+    if (apiKeyInput && apiKeyInput.startsWith("sk-")) {
+      setDeepseekKey(apiKeyInput)
+      setApiKeyConfigured(true)
+      setShowApiKeyDialog(false)
+      setApiKeyInput("")
+      playSound("success")
+    } else {
+      alert("Please enter a valid Deepseek API key (starts with 'sk-')")
+    }
+  }
+
   const loadData = async () => {
     const [loadedConversations, loadedSettings] = await Promise.all([
       getAllConversations(),
@@ -118,6 +151,10 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
+    if (!selectedModel) {
+      alert("Please select an AI model first")
+      return
+    }
     if (!currentConversation) {
       handleNewConversation()
     }
@@ -252,10 +289,19 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
       playSound("notification")
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error"
+        
+        // Check if it's a Deepseek authentication error
+        if (errorMsg.includes("Authentication") || errorMsg.includes("invalid")) {
+          setApiError("Deepseek API key is invalid. Please update it or use RapidAPI services.")
+          setUseRapidAPI(true)
+          setShowApiKeyDialog(true)
+        }
+        
         const errorMessage: Message = {
           id: generateId(),
           role: "assistant",
-          content: "Sorry, an error occurred. Please try again.",
+          content: `⚠️ 错误: ${errorMsg || "无法获取AI响应。请检查API配置或重试。"}`,
           timestamp: Date.now()
         }
         const errorConversation = {
@@ -266,6 +312,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
         setCurrentConversation(errorConversation)
         saveConversation(errorConversation)
         playSound("error")
+        console.error("[v0] AI API error:", error)
       }
     } finally {
       setIsLoading(false)
@@ -464,6 +511,41 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
     e.target.value = ""
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+    
+    const fileList = Array.from(files)
+    let fileContent = ""
+    
+    for (const file of fileList) {
+      try {
+        const content = await file.text()
+        fileContent += `\n\n### File: ${file.name}\n\`\`\`\n${content}\n\`\`\``
+      } catch (error) {
+        console.error(`Error reading file ${file.name}:`, error)
+      }
+    }
+    
+    if (fileContent) {
+      setInput(prev => prev + fileContent)
+      playSound("notification")
+    }
+    
+    e.target.value = ""
+  }
+
+  const handleDownloadResponse = (content: string, filename: string = "response") => {
+    const blob = new Blob([content], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${filename}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    playSound("click")
+  }
+
   const handleVoiceInput = () => {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
       alert("Your browser does not support voice input")
@@ -641,7 +723,29 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
             <Sparkles className="h-4 w-4 text-accent animate-pulse" />
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (!selectedModel) {
+                  alert("Please select a model first")
+                  return
+                }
+                setIsLoading(true)
+                try {
+                  const response = await sendAIMessage("Hello, test connection", selectedModel.id)
+                  alert(`API Connected!\n\nResponse: ${response.slice(0, 100)}...`)
+                } catch (error) {
+                  alert(`API Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading || !selectedModel}
+              className="text-xs px-2 py-1 rounded bg-primary/10 hover:bg-primary/20 text-foreground transition-colors disabled:opacity-50"
+            >
+              {isLoading ? "Testing..." : "Test"}
+            </button>
+            
             {/* Model Selector */}
             <div className="relative">
               <Button
@@ -655,23 +759,53 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
               </Button>
               
               {showModelSelector && (
-                <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-lg shadow-xl z-10 max-h-64 overflow-y-auto">
-                  {models.map(model => (
-                    <button
-                      key={model.id}
-                      onClick={() => {
-                        setSelectedModel(model)
-                        setShowModelSelector(false)
-                        playSound("click")
-                      }}
-                      className={`w-full text-left p-3 hover:bg-muted transition-colors ${
-                        selectedModel.id === model.id ? "bg-primary/10" : ""
-                      }`}
-                    >
-                      <p className="text-sm font-medium">{model.name}</p>
-                      <p className="text-xs text-muted-foreground">{model.provider}</p>
-                    </button>
-                  ))}
+                <div className="absolute right-0 top-full mt-1 w-80 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="sticky top-0 bg-card border-b border-border p-2 space-y-2">
+                    <Input
+                      placeholder="Search models..."
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {availableModels
+                      .filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase()) || m.provider.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map(model => {
+                        const provider = model.provider
+                        return (
+                          <button
+                            key={model.id}
+                            onClick={() => {
+                              setSelectedModel(model)
+                              setShowModelSelector(false)
+                              setSearchQuery("")
+                              playSound("click")
+                            }}
+                            className={`w-full text-left p-3 rounded-lg hover:bg-muted transition-colors flex items-start gap-3 ${
+                              selectedModel?.id === model.id ? "bg-primary/10 border border-primary/20" : ""
+                            }`}
+                          >
+                            <div className="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center bg-muted">
+                              {provider && (
+                                <img 
+                                  src={provider} 
+                                  alt={model.provider} 
+                                  className="w-full h-full object-contain p-1"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none"
+                              }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{model.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{model.provider}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{model.category}</p>
+                            </div>
+                          </button>
+                        )
+                      })}
+                  </div>
                 </div>
               )}
             </div>
@@ -784,6 +918,13 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                             <RefreshCw className="h-3 w-3" />
                           </button>
                           <button
+                            onClick={() => handleDownloadResponse(message.content, `ai-response-${index}`)}
+                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                            title="Download response"
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                          <button
                             onClick={() => handleSpeak(message.content)}
                             className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
                             title="Read aloud"
@@ -865,6 +1006,15 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                 
                 <div className="absolute right-2 bottom-2 flex items-center gap-1">
                   <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                    title="Upload file"
+                  >
+                    <Upload className="h-4 w-4" />
+                  </button>
+                  
+                  <button
                     onClick={handleVoiceInput}
                     disabled={isLoading}
                     className={`p-2 rounded-lg transition-colors ${
@@ -881,6 +1031,16 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
                     </span>
                   )}
                 </div>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".txt,.json,.py,.js,.ts,.jsx,.tsx,.html,.css,.md,.pdf,.csv,.xml"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  aria-label="Upload file"
+                />
               </div>
               
               {isLoading ? (
@@ -915,6 +1075,75 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
           </div>
         </div>
       </div>
+
+      {/* API Key Configuration Dialog */}
+      {showApiKeyDialog && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">
+                {apiError ? "API Configuration Error" : "Deepseek API Configuration"}
+              </h3>
+            </div>
+            
+            {apiError && (
+              <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-lg text-sm text-destructive">
+                {apiError}
+              </div>
+            )}
+            
+            <p className="text-sm text-muted-foreground">
+              {useRapidAPI 
+                ? "The Deepseek API key appears to be invalid. You can try a new key, or skip to use our RapidAPI services which don't require authentication."
+                : "Enter your Deepseek API key to enable AI chat. Get one from "}
+              {!useRapidAPI && (
+                <a href="https://platform.deepseek.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  platform.deepseek.com
+                </a>
+              )}
+            </p>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">API Key</label>
+              <Input
+                type="password"
+                placeholder="sk-..."
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSaveApiKey()
+                  }
+                }}
+              />
+            </div>
+            
+            <div className="bg-muted p-3 rounded-lg text-xs text-muted-foreground">
+              <p>Your API key is stored locally in your browser and never sent to any server.</p>
+            </div>
+            
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowApiKeyDialog(false)
+                  setApiKeyInput("")
+                }}
+              >
+                Skip
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveApiKey}
+                disabled={!apiKeyInput}
+              >
+                Save API Key
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && settings && (

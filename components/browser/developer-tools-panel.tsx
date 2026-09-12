@@ -19,6 +19,8 @@ export function DeveloperToolsPanel({ isOpen, onClose, currentUrl }: DevToolsPan
   const [activeTab, setActiveTab] = useState<"console" | "network" | "elements">("console")
   const [searchTerm, setSearchTerm] = useState("")
 
+  if (!isOpen) return null
+
   // 模拟数据
   const [consoleLogs] = useState<ConsoleLog[]>([
     { id: "1", type: "log", message: "Page loaded successfully", timestamp: new Date(), count: 1 },
@@ -105,8 +107,8 @@ export function DeveloperToolsPanel({ isOpen, onClose, currentUrl }: DevToolsPan
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 flex flex-col border-t border-border bg-card shadow-2xl animate-slide-up"
-      style={{ height: "40vh" }}
+      className="fixed inset-x-0 bottom-0 z-50 flex flex-col border-t border-border bg-card shadow-2xl animate-slide-up"
+      style={{ height: "40vh", maxHeight: "80vh" }}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2">

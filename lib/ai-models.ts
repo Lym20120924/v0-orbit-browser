@@ -23,11 +23,54 @@ export interface AIProvider {
 }
 
 export const AI_PROVIDERS: AIProvider[] = [
+  // Deepseek Models (Official API - Priority)
+  {
+    id: "deepseek",
+    name: "Deepseek",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/deepseek-ai/default.svg",
+    website: "https://deepseek.com",
+    apiKeyName: "DEEPSEEK_API_KEY",
+    models: [
+      {
+        id: "deepseek-v4-pro",
+        name: "Deepseek V4 Pro",
+        provider: "deepseek",
+        category: "reasoning",
+        description: "官方最强推理模型 - 支持扩展思考功能",
+        maxTokens: 128000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+      {
+        id: "deepseek-chat",
+        name: "Deepseek Chat",
+        provider: "deepseek",
+        category: "chat",
+        description: "标准聊天模型 - 低成本高性能",
+        maxTokens: 64000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+      {
+        id: "deepseek-code",
+        name: "Deepseek Code",
+        provider: "deepseek",
+        category: "code",
+        description: "代码生成模型 - 编程专用",
+        maxTokens: 64000,
+        apiEndpoint: "https://api.deepseek.com/chat/completions",
+        apiKeyName: "DEEPSEEK_API_KEY",
+        isAvailable: true,
+      },
+    ]
+  },
   // OpenAI Models
   {
     id: "openai",
     name: "OpenAI",
-    logo: "🤖",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/openai/default.svg",
     website: "https://openai.com",
     apiKeyName: "OPENAI_API_KEY",
     models: [
@@ -202,7 +245,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "anthropic",
     name: "Anthropic",
-    logo: "🧠",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/anthropic/default.svg",
     website: "https://anthropic.com",
     apiKeyName: "ANTHROPIC_API_KEY",
     models: [
@@ -1084,7 +1127,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "xai",
     name: "xAI",
-    logo: "🚀",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/x-ai/default.svg",
     website: "https://x.ai",
     apiKeyName: "XAI_API_KEY",
     models: [
@@ -1268,7 +1311,7 @@ export const AI_PROVIDERS: AIProvider[] = [
   {
     id: "groq",
     name: "Groq",
-    logo: "⚡",
+    logo: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/groq/default.svg",
     website: "https://groq.com",
     apiKeyName: "GROQ_API_KEY",
     models: [
