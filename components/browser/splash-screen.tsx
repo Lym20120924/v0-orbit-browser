@@ -8,6 +8,11 @@ interface SplashScreenProps {
   onComplete: () => void
 }
 
+function seededValue(index: number, offset = 0): number {
+  const value = Math.sin((index + 1) * 12.9898 + offset * 78.233) * 43758.5453
+  return value - Math.floor(value)
+}
+
 export function SplashScreen({ onComplete }: SplashScreenProps) {
   const [progress, setProgress] = useState(0)
   const [phase, setPhase] = useState<"loading" | "ready" | "fadeout">("loading")
@@ -81,17 +86,17 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             key={i}
             className="absolute rounded-full"
             style={{
-              width: Math.random() * 4 + 1,
-              height: Math.random() * 4 + 1,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              width: seededValue(i, 1) * 4 + 1,
+              height: seededValue(i, 2) * 4 + 1,
+              left: `${seededValue(i, 3) * 100}%`,
+              top: `${seededValue(i, 4) * 100}%`,
               background: i % 3 === 0 ? "var(--primary)" : i % 3 === 1 ? "var(--accent)" : "white",
               opacity: 0.4,
               animationName: i % 2 === 0 ? "float" : "particle-float",
-              animationDuration: `${2 + Math.random() * 3}s`,
+              animationDuration: `${2 + seededValue(i, 5) * 3}s`,
               animationTimingFunction: "ease-in-out",
               animationIterationCount: "infinite",
-              animationDelay: `${Math.random() * 2}s`,
+              animationDelay: `${seededValue(i, 6) * 2}s`,
             }}
           />
         ))}
@@ -101,13 +106,13 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
             key={`star-${i}`}
             className="absolute h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent"
             style={{
-              width: 100 + Math.random() * 100,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 50}%`,
+              width: 100 + seededValue(i, 7) * 100,
+              left: `${seededValue(i, 8) * 100}%`,
+              top: `${seededValue(i, 9) * 50}%`,
               transform: "rotate(-45deg)",
               opacity: 0.4,
               animationName: "shimmer",
-              animationDuration: `${1 + Math.random()}s`,
+              animationDuration: `${1 + seededValue(i, 10)}s`,
               animationTimingFunction: "ease-out",
               animationIterationCount: "infinite",
               animationDelay: `${i * 1.5}s`,
