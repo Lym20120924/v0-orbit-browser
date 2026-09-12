@@ -1338,8 +1338,43 @@ const PRIMARY_ENDPOINT = {
   format: "openai"
 }
 
-// Allow setting Deepseek API key from UI
-export function setDeepseekKey(key: string): void {
+  async function callRapidApiProxy(
+    messages: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+    systemPrompt?: string
+  ): Promise<string> {
+    const response = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages,
+        system_prompt: systemPrompt ?? "",
+        temperature: 0.9,
+        top_k: 5,
+        top_p: 0.9,
+        max_tokens: 256,
+        web_access: false,
+      }),
+    })
+
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      throw new Error(data?.error || `AI 服务请求失败（${response.status}）`)
+    }
+
+    const text = data?.conversationgpt4?.response
+      || data?.response
+      || data?.message
+      || data?.answer
+      || data?.choices?.[0]?.message?.content
+      || data?.choices?.[0]?.text
+      || (typeof data === "string" ? data : "")
+
+    if (!text) throw new Error("AI 服务返回了空响应")
+    return String(text)
+  }
+
+  // Allow setting Deepseek API key from UI
+  export function setDeepseekKey(key: string): void {
   if (key && key.startsWith("sk-")) {
     DEEPSEEK_API_KEY = key
     DEEPSEEK_AVAILABLE = true // Reset availability when new key is set
@@ -1369,7 +1404,7 @@ export async function sendAIMessage(
   const model = AI_MODELS.find(m => m.id === modelId) || AI_MODELS[0]
   
   // Build messages array
-  const messages = []
+  const messages: Array<{ role: "user" | "assistant" | "system"; content: string }> = []
   if (systemPrompt) {
     messages.push({ role: "system", content: systemPrompt })
   }
@@ -1377,6 +1412,13 @@ export async function sendAIMessage(
     messages.push({ role: msg.role, content: msg.content })
   }
   messages.push({ role: "user", content: message })
+
+  // Use the server-side RapidAPI proxy first so both chat surfaces share one secure integration.
+  try {
+    return await callRapidApiProxy(messages, systemPrompt)
+  } catch (error) {
+    console.log("[v0] RapidAPI proxy failed, trying configured model fallback:", error)
+  }
 
   // Try model-specific endpoint first (Deepseek gets priority if available)
   if (model.provider !== "Deepseek" || isDeepseekAvailable()) {
