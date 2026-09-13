@@ -288,6 +288,7 @@ function renderLatexFormula(formula: string): string {
 
 function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = useState(false)
+  const lines = code.split("\\n")
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code)
@@ -296,20 +297,31 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   }
 
   return (
-    <div className="relative my-3 rounded-lg overflow-hidden border border-border">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
-        <span className="text-xs text-muted-foreground font-mono">{language || "code"}</span>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
+    <div className="relative my-3 overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-1.5">
+        <span className="text-xs font-mono text-muted-foreground">{language || "code"} · {lines.length} 行</span>
+        <button onClick={handleCopy} className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground" aria-label="复制代码">
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          {copied ? "Copied" : "Copy"}
+          {copied ? "已复制" : "复制"}
         </button>
       </div>
-      <pre className="p-3 overflow-x-auto bg-muted/30">
-        <code className="text-sm font-mono">{code}</code>
-      </pre>
+      <pre className="overflow-x-auto bg-muted/30 py-3 text-sm leading-6"><code>{lines.map((line, index) => (
+        <span key={`${index}-${line}`} className="flex min-w-max">
+          <span className="sticky left-0 w-12 shrink-0 select-none border-r border-border/60 bg-muted/60 pr-3 text-right text-xs text-muted-foreground">{index + 1}</span>
+          <span className="px-3"><HighlightedCode line={line} language={language} /></span>
+        </span>
+      ))}</code></pre>
     </div>
   )
+}
+
+function HighlightedCode({ line, language }: { line: string; language: string }) {
+  const parts = line.split(/(\b(?:const|let|var|function|return|import|from|export|class|if|else|for|while|async|await|def|print|True|False|None)\b|\/\/.*$|#[^ ]+.*$|["'][^"']*["']|\b\d+(?:\.\d+)?\b)/g)
+  return <>{parts.map((part, index) => {
+    const isComment = part.startsWith("//") || (language.toLowerCase() === "python" && part.startsWith("#"))
+    const isKeyword = /^(const|let|var|function|return|import|from|export|class|if|else|for|while|async|await|def|print|True|False|None)$/.test(part)
+    const isString = /^("|').*\\1$/.test(part)
+    const isNumber = /^\\d+(?:\\.\\d+)?$/.test(part)
+    return <span key={index} className={isComment ? "text-muted-foreground italic" : isKeyword ? "text-violet-400" : isString ? "text-emerald-400" : isNumber ? "text-amber-400" : "text-foreground"}>{part}</span>
+  })}</>
 }

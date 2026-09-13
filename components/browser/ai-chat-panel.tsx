@@ -55,10 +55,13 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   const [apiKeyConfigured, setApiKeyConfigured] = useState(!!getCurrentDeepseekKey())
   const [apiError, setApiError] = useState<string | null>(null)
   const [useRapidAPI, setUseRapidAPI] = useState(false)
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   // Initialize API key on mount
@@ -510,27 +513,28 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-    
-    const fileList = Array.from(files)
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploadedFiles(prev => [...prev, ...files])
     let fileContent = ""
-    
-    for (const file of fileList) {
+    for (const file of files) {
       try {
-        const content = await file.text()
-        fileContent += `\n\n### File: ${file.name}\n\`\`\`\n${content}\n\`\`\``
-      } catch (error) {
-        console.error(`Error reading file ${file.name}:`, error)
+        const isText = file.type.startsWith("text/") || /\.(json|js|ts|tsx|jsx|py|html|css|md|csv|xml|yaml|yml|sql)$/i.test(file.name)
+        const content = isText ? await file.text() : `[二进制文件：${file.name}，大小 ${(file.size / 1024).toFixed(1)} KB]`
+        fileContent += "\n\n### 文件：" + file.name + "\n```\n" + content + "\n```"
+      } catch {
+        fileContent += "\n\n### 文件：" + file.name + "（无法读取内容）"
       }
     }
-    
-    if (fileContent) {
-      setInput(prev => prev + fileContent)
-      playSound("notification")
-    }
-    
+    setInput(prev => prev + fileContent)
+    playSound("notification")
     e.target.value = ""
+  }
+
+  const removeUploadedFile = (name: string) => setUploadedFiles(prev => prev.filter(file => file.name !== name))
+
+  const scrollMessages = (amount: number) => {
+    messagesScrollRef.current?.scrollBy({ top: amount, behavior: "smooth" })
   }
 
   const handleDownloadResponse = (content: string, filename: string = "response") => {
@@ -681,7 +685,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
           {/* Sidebar Footer */}
           <div className="p-3 border-t border-border space-y-2">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => importInputRef.current?.click()}>
                 <Upload className="h-3 w-3" />
                 Import
               </Button>
@@ -818,8 +822,14 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <div ref={messagesScrollRef} className="relative flex-1 overflow-y-auto p-4">
+          <div className="pointer-events-none sticky top-2 z-10 flex justify-end gap-1">
+            <div className="pointer-events-auto flex rounded-lg border border-border bg-background/90 shadow-sm backdrop-blur">
+              <button type="button" onClick={() => scrollMessages(-520)} className="p-2 text-muted-foreground hover:text-foreground" title="向上翻动" aria-label="向上翻动"><ChevronDown className="h-4 w-4 rotate-180" /></button>
+              <button type="button" onClick={() => scrollMessages(520)} className="p-2 text-muted-foreground hover:text-foreground" title="向下翻动" aria-label="向下翻动"><ChevronDown className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <div className="mx-auto max-w-3xl space-y-4">
             {(!currentConversation || currentConversation.messages.length === 0) ? (
               <div className="text-center py-16">
                 <Bot className="h-16 w-16 mx-auto mb-4 text-primary/50" />
@@ -979,13 +989,23 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
             
             <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Input Area */}
         <div className="p-4 border-t border-border">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-end gap-2">
               <div className="flex-1 relative">
+                {uploadedFiles.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {uploadedFiles.map(file => (
+                      <div key={`${file.name}-${file.lastModified}`} className="flex items-center gap-2 rounded-md border border-border bg-muted px-2 py-1 text-xs">
+                        <span className="max-w-[180px] truncate">{file.name}</span>
+                        <button type="button" onClick={() => removeUploadedFile(file.name)} aria-label={`移除 ${file.name}`} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Textarea
                   ref={inputRef}
                   placeholder="Type a message... (Shift+Enter for new line)"
@@ -1224,7 +1244,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
 
       {/* Hidden file input for import */}
       <input
-        ref={fileInputRef}
+        ref={importInputRef}
         type="file"
         accept=".json"
         onChange={handleImport}
