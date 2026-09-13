@@ -30,10 +30,8 @@ interface AIChatPanelProps {
 export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   // Get available models
   const availableModels = getAvailableModels()
-  // Set Deepseek V4 Pro as default, fallback to Deepseek Chat, then first available
-  const defaultModel = availableModels.find(m => m.id === "deepseek-v4-pro") || 
-                       availableModels.find(m => m.id === "deepseek-chat") || 
-                       (availableModels.length > 0 ? availableModels[0] : null)
+  // The chat uses the single server-configured HCNSEC model.
+  const defaultModel = availableModels[0]
 
   // State
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -41,7 +39,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(defaultModel)
+  const [selectedModel, setSelectedModel] = useState<AIModel>(defaultModel)
   const [settings, setSettings] = useState<ChatSettings | null>(null)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
@@ -117,7 +115,7 @@ export function AIChatPanel({ isOpen, onClose }: AIChatPanelProps) {
       setApiKeyInput("")
       playSound("success")
     } else {
-      alert("Please enter a valid Deepseek API key (starts with 'sk-')")
+      alert("聊天模型已由服务端配置，无需在此输入 API 密钥。")
     }
   }
 
